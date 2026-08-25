@@ -42,43 +42,38 @@ st.markdown(
 # Hilfsfunktion für abgerundete Ecken am Logo
 def add_rounded_corners(image_path, radius=20):
   img = Image.open(image_path).convert("RGBA")
-  # Maske für abgerundete Ecken erstellen
   mask = Image.new("L", img.size, 0)
   draw = ImageDraw.Draw(mask)
   draw.rounded_rectangle([(0, 0), img.size], radius=radius, fill=255)
 
-  # Bild mit Maske versehen
   rounded_img = Image.new("RGBA", img.size)
   rounded_img.paste(img, (0, 0), mask=mask)
   return rounded_img
 
 
-# 3. Klasse für das PDF-Layout mit grünem Rahmen
+# 3. Klasse für das PDF-Layout mit grünem Rahmen (etwas weiter außen)
 class ModernPDF(FPDF):
 
   def draw_page_border(self):
-    # Sauberer, grüner Rahmen um die ganze Seite
-    self.set_draw_color(46, 125, 50)  # Kräftiges KARE-Grün
+    # Grüner Rahmen mit etwas Puffer zum Rand (x=4, y=4, w=202, h=289)
+    self.set_draw_color(46, 125, 50)
     self.set_line_width(0.8)
-    self.rect(5, 5, 200, 287, style="D")
+    self.rect(4, 4, 202, 289, style="D")
 
   def header(self):
-    # Zeichnet den grünen Rahmen auf jeder neuen Seite
     self.draw_page_border()
 
     if self.page_no() == 1:
       logo_path = "kare_logo.png"
       if os.path.exists(logo_path):
-        # Logo mit abgerundeten Ecken versehen
         rounded_logo = add_rounded_corners(logo_path, radius=25)
         temp_logo_path = tempfile.NamedTemporaryFile(
             delete=False, suffix=".png"
         ).name
         rounded_logo.save(temp_logo_path)
 
-        # Breite auf 150 und leicht nach innen gerückt (x=30)
-        self.image(temp_logo_path, x=30, y=10, w=150)
-        # Platz nach unten vergrößert, damit die Überschrift tiefer sitzt
+        # Logo etwas schmaler (w=140) und zentriert, damit es nicht am Rand aneckt
+        self.image(temp_logo_path, x=35, y=10, w=140)
         self.ln(38)
       else:
         self.set_font("helvetica", "B", 10)
@@ -91,7 +86,7 @@ class ModernPDF(FPDF):
     self.set_y(-15)
     self.set_font("helvetica", "", 8)
     self.set_text_color(120, 120, 120)
-    self.line(12, self.get_y() - 2, 198, self.get_y() - 2)
+    self.line(14, self.get_y() - 2, 196, self.get_y() - 2)
     self.cell(
         0,
         8,
@@ -483,7 +478,7 @@ with st.container(border=True):
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand": boden_zustand,
+          "boden_zustand":boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -723,7 +718,7 @@ if st.button(
       )
     pdf.ln(4)
 
-    # 4. Zustand der Räume & Fotos
+    # 4. Zustand der Räume & Fotos (start_x auf 22 erhöht, damit Fotos nicht am Rahmen kleben)
     pdf.chapter_title("4. Zustand der Räume und Beweisfotos")
 
     temp_files = []
@@ -804,9 +799,11 @@ if st.button(
 
       if daten["fotos"]:
         pdf.ln(2)
-        start_x = 20
+        start_x = (
+            22  # Etwas weiter nach rechts verschoben (Sicherheitsabstand)
+        )
         start_y = pdf.get_y()
-        img_width = 82
+        img_width = 78  # Etwas schmaler, damit zwei Bilder perfekt reinpassen
         img_gap = 6
         max_height_in_row = 0
 
@@ -818,7 +815,7 @@ if st.button(
 
           if idx > 0 and idx % 2 == 0:
             start_y += max_height_in_row + 4
-            start_x = 20
+            start_x = 22
             max_height_in_row = 0
 
           try:
@@ -879,7 +876,6 @@ if st.button(
         img_data = canvas_vermieter.image_data.astype(np.uint8)
         img = Image.fromarray(img_data).convert("RGBA")
 
-        # Grauen Hintergrund entfernen und transparent machen
         datas = img.getdata()
         new_data = []
         for item in datas:
@@ -903,7 +899,6 @@ if st.button(
         img_data = canvas_mieter.image_data.astype(np.uint8)
         img = Image.fromarray(img_data).convert("RGBA")
 
-        # Grauen Hintergrund entfernen und transparent machen
         datas = img.getdata()
         new_data = []
         for item in datas:
