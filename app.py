@@ -853,7 +853,10 @@ if st.button(
       pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
     pdf.ln(4)
 
-    # 6. Unterschriften
+    # 6. Unterschriften (Sicherstellen, dass alles komplett auf eine neue Seite wandert, falls der Platz knapp wird)
+    if pdf.get_y() > 220:
+      pdf.add_page()
+
     pdf.chapter_title("6. Unterschriften")
     pdf.set_font("helvetica", size=9)
     pdf.set_text_color(100, 110, 120)
@@ -867,7 +870,7 @@ if st.button(
         0,
         1,
     )
-    pdf.ln(4)
+    pdf.ln(6)
 
     sig_y = pdf.get_y()
 
