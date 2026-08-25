@@ -72,7 +72,6 @@ class ModernPDF(FPDF):
         ).name
         rounded_logo.save(temp_logo_path)
 
-        # Logo etwas schmaler (w=140) und zentriert, damit es nicht am Rand aneckt
         self.image(temp_logo_path, x=35, y=10, w=140)
         self.ln(38)
       else:
@@ -478,7 +477,7 @@ with st.container(border=True):
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand":boden_zustand,
+          "boden_zustand": boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -718,7 +717,7 @@ if st.button(
       )
     pdf.ln(4)
 
-    # 4. Zustand der Räume & Fotos (start_x auf 22 erhöht, damit Fotos nicht am Rahmen kleben)
+    # 4. Zustand der Räume & Fotos
     pdf.chapter_title("4. Zustand der Räume und Beweisfotos")
 
     temp_files = []
@@ -799,11 +798,9 @@ if st.button(
 
       if daten["fotos"]:
         pdf.ln(2)
-        start_x = (
-            22  # Etwas weiter nach rechts verschoben (Sicherheitsabstand)
-        )
+        start_x = 22
         start_y = pdf.get_y()
-        img_width = 78  # Etwas schmaler, damit zwei Bilder perfekt reinpassen
+        img_width = 70  # Kompaktere Bildbreite (70mm), damit alles sicher im Rahmen bleibt
         img_gap = 6
         max_height_in_row = 0
 
@@ -825,7 +822,13 @@ if st.button(
               if calc_height > max_height_in_row:
                 max_height_in_row = calc_height
           except Exception:
-            calc_height = 60
+            calc_height = 50
+
+          # Automatischer Seitenumbruch, falls das Bild sonst in den Footer ragt
+          if start_y + calc_height > 265:
+            pdf.add_page()
+            start_y = pdf.get_y() + 5
+            start_x = 22
 
           try:
             current_x = start_x + ((idx % 2) * (img_width + img_gap))
