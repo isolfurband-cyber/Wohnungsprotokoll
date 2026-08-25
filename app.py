@@ -118,8 +118,7 @@ if os.path.exists(logo_path):
   st.image(logo_path, width=400)
 else:
   st.warning(
-      "⚠️ Hinweis: Die Datei 'kare_logo.png' wurde nicht im App-Ordner"
-      " gefunden."
+      "⚠️ Hinweis: Die Datei 'kare_logo.png' wurde nicht im App-Ordner gefunden."
   )
   st.markdown(
       "<h1 style='text-align: center;'>🏠 KARE-Immobilien Protokoll</h1>",
@@ -837,7 +836,7 @@ if st.button(
           except Exception:
             pass
 
-        pdf.set_y(start_y + max_height_in_row + 5)
+          pdf.set_y(start_y + max_height_in_row + 5)
 
       pdf.ln(3)
 
@@ -878,8 +877,19 @@ if st.button(
     ):
       with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig1:
         img_data = canvas_vermieter.image_data.astype(np.uint8)
-        img = Image.fromarray(img_data)
-        img.save(tmp_sig1.name)
+        img = Image.fromarray(img_data).convert("RGBA")
+
+        # Grauen Hintergrund entfernen und transparent machen
+        datas = img.getdata()
+        new_data = []
+        for item in datas:
+          if item[0] > 235 and item[1] > 235 and item[2] > 235:
+            new_data.append((255, 255, 255, 0))
+          else:
+            new_data.append(item)
+        img.putdata(new_data)
+
+        img.save(tmp_sig1.name, "PNG")
         tmp_sig1_path = tmp_sig1.name
         temp_files.append(tmp_sig1_path)
 
@@ -891,8 +901,19 @@ if st.button(
     ):
       with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig2:
         img_data = canvas_mieter.image_data.astype(np.uint8)
-        img = Image.fromarray(img_data)
-        img.save(tmp_sig2.name)
+        img = Image.fromarray(img_data).convert("RGBA")
+
+        # Grauen Hintergrund entfernen und transparent machen
+        datas = img.getdata()
+        new_data = []
+        for item in datas:
+          if item[0] > 235 and item[1] > 235 and item[2] > 235:
+            new_data.append((255, 255, 255, 0))
+          else:
+            new_data.append(item)
+        img.putdata(new_data)
+
+        img.save(tmp_sig2.name, "PNG")
         tmp_sig2_path = tmp_sig2.name
         temp_files.append(tmp_sig2_path)
 
