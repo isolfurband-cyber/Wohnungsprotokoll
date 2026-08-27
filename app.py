@@ -899,11 +899,18 @@ if st.button(
             except:
                 pass
 
-        # Angepasste PDF-Ausgabe für aktuelle fpdf2-Versionen
-        pdf_output = pdf.output()
+        # Robuste Konvertierung in Bytes für Streamlit (kompatibel mit allen fpdf2-Versionen)
+        raw_output = pdf.output()
+        if isinstance(raw_output, str):
+            pdf_bytes = raw_output.encode("latin-1")
+        elif isinstance(raw_output, bytearray):
+            pdf_bytes = bytes(raw_output)
+        else:
+            pdf_bytes = raw_output
+
         st.download_button(
             label="📥 PDF-Protokoll herunterladen",
-            data=pdf_output,
+            data=pdf_bytes,
             file_name=f"Wohnungs-Protokoll_{mieter.replace(' ', '_')}.pdf",
             mime="application/pdf",
         )
