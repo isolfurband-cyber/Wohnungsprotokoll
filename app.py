@@ -142,6 +142,12 @@ with st.container(border=True):
     ort = st.text_input("Ort, PLZ")
     mieter = st.text_input("Name des Mieters")
     mietbeginn = st.date_input("Mietbeginn", key="mietbeginn_datum")
+    
+    # NEU: Mietende-Feld wird nur beim Wohnungsabnahmeprotokoll unter Mietbeginn angezeigt
+    mietende = None
+    if protokoll_typ == "Wohnungsabnahmeprotokoll":
+      mietende = st.date_input("Mietende", key="mietende_datum")
+
   with col2:
     vermieter = st.text_input("Name des Vermieters", value="KARE-Immobilien")
     etage = st.text_input("Etage (z.B. 2. Obergeschoss)")
@@ -477,7 +483,7 @@ with st.container(border=True):
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand": boden_zustand,
+          "boden_zustand":boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -607,6 +613,13 @@ if st.button(
     pdf.cell(45, 6, "Mietbeginn:", 0, 0)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(0, 6, mietbeginn.strftime("%d.%m.%Y"), 0, 1)
+
+    # Mietende ins PDF schreiben (nur wenn es sich um ein Abnahmeprotokoll handelt)
+    if protokoll_typ == "Wohnungsabnahmeprotokoll" and mietende:
+      pdf.set_font("helvetica", size=10)
+      pdf.cell(45, 6, "Mietende:", 0, 0)
+      pdf.set_font("helvetica", "B", 10)
+      pdf.cell(0, 6, mietende.strftime("%d.%m.%Y"), 0, 1)
 
     pdf.set_font("helvetica", size=10)
     pdf.cell(45, 6, "Datum der Begehung:", 0, 0)
