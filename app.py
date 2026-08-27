@@ -321,12 +321,12 @@ with st.container(border=True):
                 placeholder="Zählernummer eingeben...",
             )
         with col_z2:
-            z_wert = st.number_input(
+            # Als Textfeld, damit exakt z.B. "0,000" oder "1234,567" ohne automatische Tausenderpunkte eingegeben werden kann
+            z_wert = st.text_input(
                 f"Zählerstand ({z['einheit']})",
-                value=0.000,
-                format="%.3f",
-                step=0.001,
+                value="0,000",
                 key=f"z_wert_{i}",
+                placeholder="z.B. 1234,567",
             )
 
         zaehler_daten.append({
@@ -493,7 +493,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand": boden_zustand,
+                "boden_zustand":boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -732,7 +732,7 @@ if st.button(
             )
         pdf.ln(4)
 
-        # 3. Zählerstände (hier mit 3 Nachkommastellen formatiert)
+        # 3. Zählerstände (direkt als Text übernommen)
         pdf.chapter_title("3. Zählerstände")
         pdf.set_font("helvetica", size=10)
         for z in zaehler_daten:
@@ -744,7 +744,7 @@ if st.button(
             pdf.cell(
                 0,
                 6,
-                f"Stand: {z['stand']:.3f} {z['einheit']}"
+                f"Stand: {z['stand']} {z['einheit']}"
                 .encode("latin-1", "replace")
                 .decode("latin-1"),
                 0,
