@@ -175,18 +175,20 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("💶 2. Kaution & 🔑 Schlüssel")
 
-    kaution_betrag = 0.0
+    kaution_betrag_str = "0,00"
     kaution_status = ""
     kaution_raten_anzahl = 0
     kaution_raten_notiz = ""
     kaution_einbehalt = ""
-    kaution_einbehalt_betrag = 0.0
+    kaution_einbehalt_betrag_str = "0,00"
 
     if protokoll_typ == "Wohnungsübergabeprotokoll":
         col_k1, col_k2 = st.columns(2)
         with col_k1:
-            kaution_betrag = st.number_input(
-                "Kautionssumme (€)", value=0.00, format="%.2f", step=50.00
+            kaution_betrag_str = st.text_input(
+                "Kautionssumme (€)",
+                value="0,00",
+                placeholder="z.B. 750,00",
             )
         with col_k2:
             kaution_status = st.selectbox(
@@ -215,11 +217,10 @@ with st.container(border=True):
         st.write("🛡️ **Einbehalt der Kaution**")
         col_e1, col_e2 = st.columns([1, 2])
         with col_e1:
-            kaution_einbehalt_betrag = st.number_input(
+            kaution_einbehalt_betrag_str = st.text_input(
                 "Einbehalt in €",
-                value=0.00,
-                format="%.2f",
-                step=50.00,
+                value="0,00",
+                placeholder="z.B. 150,00",
                 key="einbehalt_betrag_input",
             )
         with col_e2:
@@ -492,7 +493,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand": boden_zustand,
+                "boden_zustand":boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -561,6 +562,15 @@ if st.button(
     if not wohnung or not mieter:
         st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
     else:
+        # Eingabe bereinigen: Ersetzt versehentlich eingegebene Punkte durch Kommas, damit es harmonisiert ist
+        kaution_text_anzeige = kaution_betrag_str.strip()
+        if kaution_text_anzeige and not "," in kaution_text_anzeige and "." in kaution_text_anzeige:
+            kaution_text_anzeige = kaution_text_anzeige.replace(".", ",")
+
+        einbehalt_text_anzeige = kaution_einbehalt_betrag_str.strip()
+        if einbehalt_text_anzeige and not "," in einbehalt_text_anzeige and "." in einbehalt_text_anzeige:
+            einbehalt_text_anzeige = einbehalt_text_anzeige.replace(".", ",")
+
         st.success(
             "Protokoll wurde erfolgreich erstellt! Der Download startet gleich."
         )
@@ -664,14 +674,12 @@ if st.button(
         pdf.set_text_color(51, 65, 85)
 
         if protokoll_typ == "Wohnungsübergabeprotokoll":
-            # Betrag mitteleuropäisch formatieren (Punkt zu Komma)
-            kaution_str = f"{kaution_betrag:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             pdf.cell(45, 6, "Kautionssumme:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
             pdf.cell(
                 0,
                 6,
-                f"{kaution_str} EUR  ({kaution_status})"
+                f"{kaution_text_anzeige} EUR  ({kaution_status})"
                 .encode("latin-1", "replace")
                 .decode("latin-1"),
                 0,
@@ -698,10 +706,9 @@ if st.button(
                 if kaution_einbehalt
                 else "Keine Angabe"
             )
-            einbehalt_str = f"{kaution_einbehalt_betrag:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             pdf.cell(45, 6, "Kautions-Einbehalt:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
-            pdf.cell(0, 6, f"{einbehalt_str} EUR", 0, 1)
+            pdf.cell(0, 6, f"{einbehalt_text_anzeige} EUR", 0, 1)
             pdf.set_font("helvetica", size=10)
             pdf.cell(45, 6, "Grund:", 0, 0)
             pdf.set_font("helvetica", "I", 10)
