@@ -899,7 +899,8 @@ if st.button(
             except:
                 pass
 
-        pdf_output = pdf.output(dest="S").encode("latin-1")
+        # Angepasste PDF-Ausgabe für aktuelle fpdf2-Versionen
+        pdf_output = pdf.output()
         st.download_button(
             label="📥 PDF-Protokoll herunterladen",
             data=pdf_output,
