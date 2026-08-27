@@ -434,7 +434,7 @@ with st.container(border=True):
             with col_r4:
                 boden_zustand = st.selectbox(
                     "Zustand Fußboden",
-                    ["i.O.", "abgewohnt"],
+                    ["i.O.", "abgewohnt", "beschädigt"],
                     key=f"boden_zustand_{raum}",
                 )
 
@@ -493,7 +493,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand":boden_zustand,
+                "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -562,7 +562,6 @@ if st.button(
     if not wohnung or not mieter:
         st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
     else:
-        # Eingabe bereinigen: Ersetzt versehentlich eingegebene Punkte durch Kommas, damit es harmonisiert ist
         kaution_text_anzeige = kaution_betrag_str.strip()
         if kaution_text_anzeige and not "," in kaution_text_anzeige and "." in kaution_text_anzeige:
             kaution_text_anzeige = kaution_text_anzeige.replace(".", ",")
@@ -844,12 +843,10 @@ if st.button(
 
             if daten["fotos"]:
                 pdf.ln(2)
-                start_x = 22
-                start_y = pdf.get_y()
                 img_width = 70
                 img_gap = 6
-                max_height_in_row = 0
-
+                col_x_coords = [22, 22 + img_width + img_gap]
+                
                 for idx, foto in enumerate(daten["fotos"]):
                     with tempfile.NamedTemporaryFile(
                         delete=False, suffix=".jpg"
@@ -858,152 +855,54 @@ if st.button(
                         tmp_img_path = tmp_img.name
                         temp_files.append(tmp_img_path)
 
-                    if idx > 0 and idx % 2 == 0:
-                        start_y += max_height_in_row + 4
-                        start_x = 22
-                        max_height_in_row = 0
-
                     try:
                         with Image.open(tmp_img_path) as pil_img:
                             w_orig, h_orig = pil_img.size
                             calc_height = (img_width / w_orig) * h_orig
-                            if calc_height > max_height_in_row:
-                                max_height_in_row = calc_height
                     except Exception:
                         calc_height = 50
 
-                    if start_y + calc_height > 265:
+                    col_idx = idx % 2
+                    current_x = col_x_coords[col_idx]
+
+                    if col_idx == 0 and idx > 0:
+                        pdf.set_y(pdf.get_y() + max_height_in_row + 4)
+
+                    if pdf.get_y() + calc_height > 270:
                         pdf.add_page()
-                        start_y = pdf.get_y() + 5
-                        start_x = 22
 
-                    try:
-                        current_x = start_x + ((idx % 2) * (img_width + img_gap))
-                        pdf.image(tmp_img_path, x=current_x, y=start_y, w=img_width)
-                    except Exception:
-                        pass
-
-                    pdf.set_y(start_y + max_height_in_row + 5)
-
-            pdf.ln(3)
-
-        # 5. Sonstige Bemerkungen
-        pdf.chapter_title("5. Sonstige Bemerkungen")
-        pdf.set_font("helvetica", size=10)
-        if sonstige_bemerkungen:
-            pdf.multi_cell(
-                0,
-                5,
-                sonstige_bemerkungen.encode("latin-1", "replace").decode(
-                    "latin-1"
-                ),
-            )
-        else:
-            pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
-        pdf.ln(4)
-
-        # 6. Unterschriften
-        if pdf.get_y() > 220:
-            pdf.add_page()
-
-        pdf.chapter_title("6. Unterschriften")
-        pdf.set_font("helvetica", size=9)
-        pdf.set_text_color(100, 110, 120)
-        pdf.cell(
-            0,
-            5,
-            (
-                "Mit ihrer Unterschrift bestätigen die Parteien die Richtigkeit der"
-                " oben genannten Angaben."
-            ),
-            0,
-            1,
-        )
-        pdf.ln(6)
-
-        sig_y = pdf.get_y()
-
-        if (
-            canvas_vermieter.image_data is not None
-            and canvas_vermieter.json_data["objects"]
-        ):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig1:
-                img_data = canvas_vermieter.image_data.astype(np.uint8)
-                img = Image.fromarray(img_data).convert("RGBA")
-
-                datas = img.getdata()
-                new_data = []
-                for item in datas:
-                    if item[0] > 235 and item[1] > 235 and item[2] > 235:
-                        new_data.append((255, 255, 255, 0))
+                    if col_idx == 0:
+                        row_start_y = pdf.get_y()
+                        max_height_in_row = calc_height
                     else:
-                        new_data.append(item)
-                img.putdata(new_data)
+                        if calc_height > max_height_in_row:
+                            max_height_in_row = calc_height
 
-                img.save(tmp_sig1.name, "PNG")
-                tmp_sig1_path = tmp_sig1.name
-                temp_files.append(tmp_sig1_path)
+                    pdf.image(
+                        tmp_img_path,
+                        x=current_x,
+                        y=row_start_y if col_idx > 0 else pdf.get_y(),
+                        w=img_width,
+                    )
 
-            pdf.image(tmp_sig1_path, x=15, y=sig_y, w=75)
+                    if col_idx == 1:
+                        pdf.set_y(row_start_y + max_height_in_row + 6)
 
-        if (
-            canvas_mieter.image_data is not None
-            and canvas_mieter.json_data["objects"]
-        ):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig2:
-                img_data = canvas_mieter.image_data.astype(np.uint8)
-                img = Image.fromarray(img_data).convert("RGBA")
+                if len(daten["fotos"]) % 2 != 0:
+                    pdf.set_y(pdf.get_y() + max_height_in_row + 6)
+                
+                pdf.ln(2)
 
-                datas = img.getdata()
-                new_data = []
-                for item in datas:
-                    if item[0] > 235 and item[1] > 235 and item[2] > 235:
-                        new_data.append((255, 255, 255, 0))
-                    else:
-                        new_data.append(item)
-                img.putdata(new_data)
-
-                img.save(tmp_sig2.name, "PNG")
-                tmp_sig2_path = tmp_sig2.name
-                temp_files.append(tmp_sig2_path)
-
-            pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
-
-        pdf.set_y(sig_y + 35)
-        pdf.set_font("helvetica", size=9)
-        pdf.set_text_color(51, 65, 85)
-        pdf.cell(95, 5, "___________________________________", 0, 0, "L")
-        pdf.cell(95, 5, "___________________________________", 0, 1, "L")
-        pdf.cell(95, 5, "Unterschrift Vermieter (KARE)", 0, 0, "L")
-        pdf.cell(
-            95,
-            5,
-            f"Unterschrift Mieter ({mieter.encode('latin-1', 'replace').decode('latin-1')})",
-            0,
-            1,
-            "L",
-        )
-
-        # PDF Ausgabe und Download-Bereitstellung
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-            pdf.output(tmp_pdf.name)
-            tmp_pdf_path = tmp_pdf.name
-            temp_files.append(tmp_pdf_path)
-
-        with open(tmp_pdf_path, "rb") as pdf_file:
-            st.download_button(
-                label="📥 PDF herunterladen",
-                data=pdf_file,
-                file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                type="primary",
-                use_container_width=True,
-            )
-
-        # Temporäre Dateien aufräumen
-        for file_path in temp_files:
+        for tmp_path in temp_files:
             try:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except Exception:
+                os.remove(tmp_path)
+            except:
                 pass
+
+        pdf_output = pdf.output(dest="S").encode("latin-1")
+        st.download_button(
+            label="📥 PDF-Protokoll herunterladen",
+            data=pdf_output,
+            file_name=f"Wohnungs-Protokoll_{mieter.replace(' ', '_')}.pdf",
+            mime="application/pdf",
+        )
