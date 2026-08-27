@@ -51,11 +51,10 @@ def add_rounded_corners(image_path, radius=20):
   return rounded_img
 
 
-# 3. Klasse für das PDF-Layout mit grünem Rahmen (etwas weiter außen)
+# 3. Klasse für das PDF-Layout mit grünem Rahmen
 class ModernPDF(FPDF):
 
   def draw_page_border(self):
-    # Grüner Rahmen mit etwas Puffer zum Rand (x=4, y=4, w=202, h=289)
     self.set_draw_color(46, 125, 50)
     self.set_line_width(0.8)
     self.rect(4, 4, 202, 289, style="D")
@@ -121,7 +120,6 @@ else:
 
 st.write("")
 
-
 # --- ABSCHNITT 0: PROTOKOLL ART ---
 with st.container(border=True):
   st.subheader("📑 Art des Protokolls")
@@ -132,7 +130,6 @@ with st.container(border=True):
       label_visibility="collapsed",
   )
 
-
 # --- ABSCHNITT 1: STAMMDATEN ---
 with st.container(border=True):
   st.subheader("👤 1. Stammdaten")
@@ -141,12 +138,17 @@ with st.container(border=True):
     wohnung = st.text_input("Adresse der Wohnung (Straße, Hausnr.)")
     ort = st.text_input("Ort, PLZ")
     mieter = st.text_input("Name des Mieters")
-    mietbeginn = st.date_input("Mietbeginn", key="mietbeginn_datum")
-    
-    # NEU: Mietende-Feld wird nur beim Wohnungsabnahmeprotokoll unter Mietbeginn angezeigt
+
+    # Format auf DD.MM.YYYY geändert
+    mietbeginn = st.date_input(
+        "Mietbeginn", format="DD.MM.YYYY", key="mietbeginn_datum"
+    )
+
     mietende = None
     if protokoll_typ == "Wohnungsabnahmeprotokoll":
-      mietende = st.date_input("Mietende", key="mietende_datum")
+      mietende = st.date_input(
+          "Mietende", format="DD.MM.YYYY", key="mietende_datum"
+      )
 
   with col2:
     vermieter = st.text_input("Name des Vermieters", value="KARE-Immobilien")
@@ -154,7 +156,12 @@ with st.container(border=True):
     quadratmeter = st.number_input(
         "Wohnfläche (m²)", value=0.0, format="%.2f", step=1.0
     )
-    datum = st.date_input("Datum der Begehung/Übergabe")
+    # Format auf DD.MM.YYYY geändert
+    datum = st.date_input(
+        "Datum der Begehung/Übergabe",
+        format="DD.MM.YYYY",
+        key="begehung_datum",
+    )
 
   neue_adresse_mieter = ""
   if protokoll_typ == "Wohnungsabnahmeprotokoll":
@@ -165,7 +172,6 @@ with st.container(border=True):
         placeholder="Wird für die Kautionsrückzahlung benötigt...",
         label_visibility="collapsed",
     )
-
 
 # --- ABSCHNITT 2: KAUTION & SCHLÜSSEL ---
 with st.container(border=True):
@@ -268,7 +274,6 @@ with st.container(border=True):
           st.session_state.weitere_schluessel.pop(idx)
           st.rerun()
 
-
 # --- ABSCHNITT 3: ZÄHLERSTÄNDE ---
 with st.container(border=True):
   st.subheader("⚡ 3. Zählerstände")
@@ -327,7 +332,6 @@ with st.container(border=True):
     })
     if i < len(st.session_state.zaehler_liste) - 1:
       st.write("")
-
 
 # --- ABSCHNITT 4: ZUSTAND DER RÄUME ---
 with st.container(border=True):
@@ -483,7 +487,7 @@ with st.container(border=True):
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand":boden_zustand,
+          "boden_zustand": boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -492,7 +496,6 @@ with st.container(border=True):
           "kommentar": kommentar,
           "fotos": fotos,
       }
-
 
 # --- ABSCHNITT 5: BEMERKUNGEN ---
 with st.container(border=True):
@@ -506,7 +509,6 @@ with st.container(border=True):
       label_visibility="collapsed",
       height=100,
   )
-
 
 # --- ABSCHNITT 6: UNTERSCHRIFTEN ---
 with st.container(border=True):
@@ -542,7 +544,6 @@ with st.container(border=True):
         drawing_mode="freedraw",
         key="canvas_mieter",
     )
-
 
 st.write("")
 
@@ -614,7 +615,6 @@ if st.button(
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(0, 6, mietbeginn.strftime("%d.%m.%Y"), 0, 1)
 
-    # Mietende ins PDF schreiben (nur wenn es sich um ein Abnahmeprotokoll handelt)
     if protokoll_typ == "Wohnungsabnahmeprotokoll" and mietende:
       pdf.set_font("helvetica", size=10)
       pdf.cell(45, 6, "Mietende:", 0, 0)
@@ -742,11 +742,11 @@ if st.button(
 
       pdf.set_font("helvetica", "B", 10)
       if daten["zustand"] == "Einwandfrei":
-        pdf.set_text_color(16, 185, 129)  # Grün
+        pdf.set_text_color(16, 185, 129)
       elif daten["zustand"] == "Leichte Mängel":
-        pdf.set_text_color(217, 119, 6)  # Orange
+        pdf.set_text_color(217, 119, 6)
       else:
-        pdf.set_text_color(220, 38, 38)  # Rot
+        pdf.set_text_color(220, 38, 38)
 
       pdf.cell(0, 6, daten["zustand"], 0, 1)
       pdf.set_text_color(51, 65, 85)
@@ -813,12 +813,14 @@ if st.button(
         pdf.ln(2)
         start_x = 22
         start_y = pdf.get_y()
-        img_width = 70  # Kompaktere Bildbreite (70mm), damit alles sicher im Rahmen bleibt
+        img_width = 70
         img_gap = 6
         max_height_in_row = 0
 
         for idx, foto in enumerate(daten["fotos"]):
-          with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
+          with tempfile.NamedTemporaryFile(
+              delete=False, suffix=".jpg"
+          ) as tmp_img:
             tmp_img.write(foto.getbuffer())
             tmp_img_path = tmp_img.name
             temp_files.append(tmp_img_path)
@@ -837,7 +839,6 @@ if st.button(
           except Exception:
             calc_height = 50
 
-          # Automatischer Seitenumbruch, falls das Bild sonst in den Footer ragt
           if start_y + calc_height > 265:
             pdf.add_page()
             start_y = pdf.get_y() + 5
@@ -866,7 +867,7 @@ if st.button(
       pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
     pdf.ln(4)
 
-    # 6. Unterschriften (Sicherstellen, dass alles komplett auf eine neue Seite wandert, falls der Platz knapp wird)
+    # 6. Unterschriften
     if pdf.get_y() > 220:
       pdf.add_page()
 
