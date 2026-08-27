@@ -71,7 +71,7 @@ class ModernPDF(FPDF):
                 ).name
                 rounded_logo.save(temp_logo_path)
 
-                self.image(temp_logo_path, x=35, y=10, w=140)
+                self.image(temp_logo_path, x=30, y=8, w=130)
                 self.ln(38)
             else:
                 self.set_font("helvetica", "B", 10)
