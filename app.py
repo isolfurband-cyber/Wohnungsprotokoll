@@ -321,7 +321,6 @@ with st.container(border=True):
                 placeholder="Zählernummer eingeben...",
             )
         with col_z2:
-            # Als Textfeld, damit exakt z.B. "0,000" oder "1234,567" ohne automatische Tausenderpunkte eingegeben werden kann
             z_wert = st.text_input(
                 f"Zählerstand ({z['einheit']})",
                 value="0,000",
@@ -493,7 +492,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand":boden_zustand,
+                "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -665,12 +664,14 @@ if st.button(
         pdf.set_text_color(51, 65, 85)
 
         if protokoll_typ == "Wohnungsübergabeprotokoll":
+            # Betrag mitteleuropäisch formatieren (Punkt zu Komma)
+            kaution_str = f"{kaution_betrag:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             pdf.cell(45, 6, "Kautionssumme:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
             pdf.cell(
                 0,
                 6,
-                f"{kaution_betrag:.2f} EUR  ({kaution_status})"
+                f"{kaution_str} EUR  ({kaution_status})"
                 .encode("latin-1", "replace")
                 .decode("latin-1"),
                 0,
@@ -697,9 +698,10 @@ if st.button(
                 if kaution_einbehalt
                 else "Keine Angabe"
             )
+            einbehalt_str = f"{kaution_einbehalt_betrag:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             pdf.cell(45, 6, "Kautions-Einbehalt:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
-            pdf.cell(0, 6, f"{kaution_einbehalt_betrag:.2f} EUR", 0, 1)
+            pdf.cell(0, 6, f"{einbehalt_str} EUR", 0, 1)
             pdf.set_font("helvetica", size=10)
             pdf.cell(45, 6, "Grund:", 0, 0)
             pdf.set_font("helvetica", "I", 10)
@@ -732,7 +734,7 @@ if st.button(
             )
         pdf.ln(4)
 
-        # 3. Zählerstände (direkt als Text übernommen)
+        # 3. Zählerstände
         pdf.chapter_title("3. Zählerstände")
         pdf.set_font("helvetica", size=10)
         for z in zaehler_daten:
