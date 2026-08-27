@@ -139,7 +139,6 @@ with st.container(border=True):
         ort = st.text_input("Ort, PLZ")
         mieter = st.text_input("Name des Mieters")
 
-        # Als normales Text-Eingabefeld umgestellt
         mietbeginn = st.text_input(
             "Mietbeginn", placeholder="TT.MM.JJJJ", key="mietbeginn_text"
         )
@@ -241,6 +240,9 @@ with st.container(border=True):
         s_briefkasten = st.number_input("Briefkasten", min_value=0, value=0, step=1)
     with col_s3:
         s_keller = st.number_input("Keller", min_value=0, value=0, step=1)
+        s_generalschlüssel = st.number_input(
+            "Generalschlüssel", min_value=0, value=0, step=1
+        )
 
     if "weitere_schluessel" not in st.session_state:
         st.session_state.weitere_schluessel = []
@@ -280,8 +282,13 @@ with st.container(border=True):
     if "zaehler_liste" not in st.session_state:
         st.session_state.zaehler_liste = [
             {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
-            {"typ": "Wasser", "bezeichnung": "Wasser Hauptzähler", "einheit": "m³"},
-            {"typ": "Heizung", "bezeichnung": "Heizung", "einheit": "Einheiten"},
+            {"typ": "Wasser", "bezeichnung": "Kaltwasserzähler", "einheit": "m³"},
+            {"typ": "Wasser", "bezeichnung": "Warmwasserzähler", "einheit": "m³"},
+            {"typ": "Heizung", "bezeichnung": "Heizung (Wohnzimmer)", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung (Bad)", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung (Küche)", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung (Schlafzimmer)", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung (Flur)", "einheit": "Einheiten"},
         ]
 
     with st.expander("➕ Weiteren Zähler hinzufügen"):
@@ -290,7 +297,7 @@ with st.container(border=True):
             ["Strom", "Wasser", "Heizung", "Gas", "Sonstige"],
             key="select_z_typ",
         )
-        z_bez = st.text_input("Bezeichnung (z.B. Keller, Küche)", key="neu_zaehler_bez")
+        z_bez = st.text_input("Bezeichnung (z.B. Gäste-WC, Garage)", key="neu_zaehler_bez")
         z_einheit = st.text_input(
             "Maßeinheit (z.B. kWh, m³, Liter)", value="kWh", key="neu_zaehler_einheit"
         )
@@ -712,6 +719,8 @@ if st.button(
             pdf.cell(0, 5, f"  - Briefkastenschlüssel: {s_briefkasten} Stk.", 0, 1)
         if s_keller > 0:
             pdf.cell(0, 5, f"  - Kellerschlüssel: {s_keller} Stk.", 0, 1)
+        if s_generalschlüssel > 0:
+            pdf.cell(0, 5, f"  - Generalschlüssel: {s_generalschlüssel} Stk.", 0, 1)
 
         for item in st.session_state.weitere_schluessel:
             pdf.cell(
@@ -951,25 +960,41 @@ if st.button(
 
             pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
 
-        pdf.ln(24)
-        pdf.set_font("helvetica", "B", 9)
-        pdf.set_text_color(51, 65, 85)
-        pdf.cell(95, 5, "________________________________________", 0, 0)
-        pdf.cell(95, 5, "________________________________________", 0, 1)
+        pdf.set_y(sig_y + 35)
         pdf.set_font("helvetica", size=9)
-        pdf.cell(95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0)
-        pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
-
-        # PDF Download
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            pdf.output(tmp_file.name)
-            with open(tmp_file.name, "rb") as f:
-                pdf_bytes = f.read()
-
-        st.download_button(
-            label="📥 Modernes PDF-Protokoll herunterladen",
-            data=pdf_bytes,
-            file_name=f"{protokoll_typ}_{mieter.replace(' ', '_')}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
+        pdf.set_text_color(51, 65, 85)
+        pdf.cell(95, 5, "___________________________________", 0, 0, "L")
+        pdf.cell(95, 5, "___________________________________", 0, 1, "L")
+        pdf.cell(95, 5, "Unterschrift Vermieter (KARE)", 0, 0, "L")
+        pdf.cell(
+            95,
+            5,
+            f"Unterschrift Mieter ({mieter.encode('latin-1', 'replace').decode('latin-1')})",
+            0,
+            1,
+            "L",
         )
+
+        # PDF Ausgabe und Download-Bereitstellung
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            pdf.output(tmp_pdf.name)
+            tmp_pdf_path = tmp_pdf.name
+            temp_files.append(tmp_pdf_path)
+
+        with open(tmp_pdf_path, "rb") as pdf_file:
+            st.download_button(
+                label="📥 PDF herunterladen",
+                data=pdf_file,
+                file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+            )
+
+        # Temporäre Dateien aufräumen
+        for file_path in temp_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
