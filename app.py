@@ -732,7 +732,7 @@ if st.button(
             )
         pdf.ln(4)
 
-        # 3. Zählerstände
+        # 3. Zählerstände (hier mit 3 Nachkommastellen formatiert)
         pdf.chapter_title("3. Zählerstände")
         pdf.set_font("helvetica", size=10)
         for z in zaehler_daten:
