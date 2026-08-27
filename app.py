@@ -139,6 +139,7 @@ with st.container(border=True):
         ort = st.text_input("Ort, PLZ")
         mieter = st.text_input("Name des Mieters")
 
+        # Als normales Text-Eingabefeld umgestellt
         mietbeginn = st.text_input(
             "Mietbeginn", placeholder="TT.MM.JJJJ", key="mietbeginn_text"
         )
@@ -175,20 +176,18 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("💶 2. Kaution & 🔑 Schlüssel")
 
-    kaution_betrag_str = "0,00"
+    kaution_betrag = 0.0
     kaution_status = ""
     kaution_raten_anzahl = 0
     kaution_raten_notiz = ""
     kaution_einbehalt = ""
-    kaution_einbehalt_betrag_str = "0,00"
+    kaution_einbehalt_betrag = 0.0
 
     if protokoll_typ == "Wohnungsübergabeprotokoll":
         col_k1, col_k2 = st.columns(2)
         with col_k1:
-            kaution_betrag_str = st.text_input(
-                "Kautionssumme (€)",
-                value="0,00",
-                placeholder="z.B. 750,00",
+            kaution_betrag = st.number_input(
+                "Kautionssumme (€)", value=0.00, format="%.2f", step=50.00
             )
         with col_k2:
             kaution_status = st.selectbox(
@@ -217,10 +216,11 @@ with st.container(border=True):
         st.write("🛡️ **Einbehalt der Kaution**")
         col_e1, col_e2 = st.columns([1, 2])
         with col_e1:
-            kaution_einbehalt_betrag_str = st.text_input(
+            kaution_einbehalt_betrag = st.number_input(
                 "Einbehalt in €",
-                value="0,00",
-                placeholder="z.B. 150,00",
+                value=0.00,
+                format="%.2f",
+                step=50.00,
                 key="einbehalt_betrag_input",
             )
         with col_e2:
@@ -241,9 +241,6 @@ with st.container(border=True):
         s_briefkasten = st.number_input("Briefkasten", min_value=0, value=0, step=1)
     with col_s3:
         s_keller = st.number_input("Keller", min_value=0, value=0, step=1)
-        s_generalschlüssel = st.number_input(
-            "Generalschlüssel", min_value=0, value=0, step=1
-        )
 
     if "weitere_schluessel" not in st.session_state:
         st.session_state.weitere_schluessel = []
@@ -283,13 +280,8 @@ with st.container(border=True):
     if "zaehler_liste" not in st.session_state:
         st.session_state.zaehler_liste = [
             {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
-            {"typ": "Wasser", "bezeichnung": "Kaltwasserzähler", "einheit": "m³"},
-            {"typ": "Wasser", "bezeichnung": "Warmwasserzähler", "einheit": "m³"},
-            {"typ": "Heizung", "bezeichnung": "Heizung (Wohnzimmer)", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung (Bad)", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung (Küche)", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung (Schlafzimmer)", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung (Flur)", "einheit": "Einheiten"},
+            {"typ": "Wasser", "bezeichnung": "Wasser Hauptzähler", "einheit": "m³"},
+            {"typ": "Heizung", "bezeichnung": "Heizung", "einheit": "Einheiten"},
         ]
 
     with st.expander("➕ Weiteren Zähler hinzufügen"):
@@ -298,7 +290,7 @@ with st.container(border=True):
             ["Strom", "Wasser", "Heizung", "Gas", "Sonstige"],
             key="select_z_typ",
         )
-        z_bez = st.text_input("Bezeichnung (z.B. Gäste-WC, Garage)", key="neu_zaehler_bez")
+        z_bez = st.text_input("Bezeichnung (z.B. Keller, Küche)", key="neu_zaehler_bez")
         z_einheit = st.text_input(
             "Maßeinheit (z.B. kWh, m³, Liter)", value="kWh", key="neu_zaehler_einheit"
         )
@@ -322,11 +314,12 @@ with st.container(border=True):
                 placeholder="Zählernummer eingeben...",
             )
         with col_z2:
-            z_wert = st.text_input(
+            z_wert = st.number_input(
                 f"Zählerstand ({z['einheit']})",
-                value="0,000",
+                value=0.000,
+                format="%.3f",
+                step=0.001,
                 key=f"z_wert_{i}",
-                placeholder="z.B. 1234,567",
             )
 
         zaehler_daten.append({
@@ -434,7 +427,7 @@ with st.container(border=True):
             with col_r4:
                 boden_zustand = st.selectbox(
                     "Zustand Fußboden",
-                    ["i.O.", "abgewohnt", "beschädigt"],
+                    ["i.O.", "abgewohnt"],
                     key=f"boden_zustand_{raum}",
                 )
 
@@ -562,14 +555,6 @@ if st.button(
     if not wohnung or not mieter:
         st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
     else:
-        kaution_text_anzeige = kaution_betrag_str.strip()
-        if kaution_text_anzeige and not "," in kaution_text_anzeige and "." in kaution_text_anzeige:
-            kaution_text_anzeige = kaution_text_anzeige.replace(".", ",")
-
-        einbehalt_text_anzeige = kaution_einbehalt_betrag_str.strip()
-        if einbehalt_text_anzeige and not "," in einbehalt_text_anzeige and "." in einbehalt_text_anzeige:
-            einbehalt_text_anzeige = einbehalt_text_anzeige.replace(".", ",")
-
         st.success(
             "Protokoll wurde erfolgreich erstellt! Der Download startet gleich."
         )
@@ -678,7 +663,7 @@ if st.button(
             pdf.cell(
                 0,
                 6,
-                f"{kaution_text_anzeige} EUR  ({kaution_status})"
+                f"{kaution_betrag:.2f} EUR  ({kaution_status})"
                 .encode("latin-1", "replace")
                 .decode("latin-1"),
                 0,
@@ -707,7 +692,7 @@ if st.button(
             )
             pdf.cell(45, 6, "Kautions-Einbehalt:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
-            pdf.cell(0, 6, f"{einbehalt_text_anzeige} EUR", 0, 1)
+            pdf.cell(0, 6, f"{kaution_einbehalt_betrag:.2f} EUR", 0, 1)
             pdf.set_font("helvetica", size=10)
             pdf.cell(45, 6, "Grund:", 0, 0)
             pdf.set_font("helvetica", "I", 10)
@@ -727,8 +712,6 @@ if st.button(
             pdf.cell(0, 5, f"  - Briefkastenschlüssel: {s_briefkasten} Stk.", 0, 1)
         if s_keller > 0:
             pdf.cell(0, 5, f"  - Kellerschlüssel: {s_keller} Stk.", 0, 1)
-        if s_generalschlüssel > 0:
-            pdf.cell(0, 5, f"  - Generalschlüssel: {s_generalschlüssel} Stk.", 0, 1)
 
         for item in st.session_state.weitere_schluessel:
             pdf.cell(
@@ -752,7 +735,7 @@ if st.button(
             pdf.cell(
                 0,
                 6,
-                f"Stand: {z['stand']} {z['einheit']}"
+                f"Stand: {z['stand']:.3f} {z['einheit']}"
                 .encode("latin-1", "replace")
                 .decode("latin-1"),
                 0,
@@ -843,10 +826,12 @@ if st.button(
 
             if daten["fotos"]:
                 pdf.ln(2)
+                start_x = 22
+                start_y = pdf.get_y()
                 img_width = 70
                 img_gap = 6
-                col_x_coords = [22, 22 + img_width + img_gap]
-                
+                max_height_in_row = 0
+
                 for idx, foto in enumerate(daten["fotos"]):
                     with tempfile.NamedTemporaryFile(
                         delete=False, suffix=".jpg"
@@ -855,148 +840,136 @@ if st.button(
                         tmp_img_path = tmp_img.name
                         temp_files.append(tmp_img_path)
 
+                    if idx > 0 and idx % 2 == 0:
+                        start_y += max_height_in_row + 4
+                        start_x = 22
+                        max_height_in_row = 0
+
                     try:
                         with Image.open(tmp_img_path) as pil_img:
                             w_orig, h_orig = pil_img.size
                             calc_height = (img_width / w_orig) * h_orig
+                            if calc_height > max_height_in_row:
+                                max_height_in_row = calc_height
                     except Exception:
                         calc_height = 50
 
-                    col_idx = idx % 2
-                    current_x = col_x_coords[col_idx]
-
-                    if col_idx == 0 and idx > 0:
-                        pdf.set_y(pdf.get_y() + max_height_in_row + 4)
-
-                    if pdf.get_y() + calc_height > 270:
+                    if start_y + calc_height > 265:
                         pdf.add_page()
+                        start_y = pdf.get_y() + 5
+                        start_x = 22
 
-                    if col_idx == 0:
-                        row_start_y = pdf.get_y()
-                        max_height_in_row = calc_height
-                    else:
-                        if calc_height > max_height_in_row:
-                            max_height_in_row = calc_height
+                    try:
+                        current_x = start_x + ((idx % 2) * (img_width + img_gap))
+                        pdf.image(tmp_img_path, x=current_x, y=start_y, w=img_width)
+                    except Exception:
+                        pass
 
-                    pdf.image(
-                        tmp_img_path,
-                        x=current_x,
-                        y=row_start_y if col_idx > 0 else pdf.get_y(),
-                        w=img_width,
-                    )
+                    pdf.set_y(start_y + max_height_in_row + 5)
 
-                    if col_idx == 1:
-                        pdf.set_y(row_start_y + max_height_in_row + 6)
-
-                if len(daten["fotos"]) % 2 != 0:
-                    pdf.set_y(pdf.get_y() + max_height_in_row + 6)
-                
-                pdf.ln(2)
+            pdf.ln(3)
 
         # 5. Sonstige Bemerkungen
         pdf.chapter_title("5. Sonstige Bemerkungen")
         pdf.set_font("helvetica", size=10)
-        pdf.set_text_color(51, 65, 85)
         if sonstige_bemerkungen:
             pdf.multi_cell(
                 0,
-                6,
-                sonstige_bemerkungen.encode("latin-1", "replace").decode("latin-1"),
+                5,
+                sonstige_bemerkungen.encode("latin-1", "replace").decode(
+                    "latin-1"
+                ),
             )
         else:
-            pdf.cell(0, 6, "Keine zusätzlichen Bemerkungen.", 0, 1)
+            pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
         # 6. Unterschriften
+        if pdf.get_y() > 220:
+            pdf.add_page()
+
         pdf.chapter_title("6. Unterschriften")
         pdf.set_font("helvetica", size=9)
+        pdf.set_text_color(100, 110, 120)
         pdf.cell(
             0,
             5,
-            "Mit ihrer Unterschrift bestätigen die Parteien die Richtigkeit der obigen Angaben.",
+            (
+                "Mit ihrer Unterschrift bestätigen die Parteien die Richtigkeit der"
+                " oben genannten Angaben."
+            ),
             0,
             1,
         )
         pdf.ln(6)
 
-        # Unterschriften-Bilder aus den Canvas-Objekten generieren
-        sig_vermieter_path = None
-        sig_mieter_path = None
+        sig_y = pdf.get_y()
 
-        if canvas_vermieter.image_data is not None:
-            img_v = Image.fromarray(
-                canvas_vermieter.image_data.astype("uint8"), mode="RGBA"
-            )
-            # Weißen Hintergrund unterlegen, falls transparent
-            bg_v = Image.new("RGB", img_v.size, (255, 255, 255))
-            bg_v.paste(img_v, (0, 0), img_v)
-            tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            bg_v.save(tmp_v.name)
-            sig_vermieter_path = tmp_v.name
-            temp_files.append(sig_vermieter_path)
+        if (
+            canvas_vermieter.image_data is not None
+            and canvas_vermieter.json_data["objects"]
+        ):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig1:
+                img_data = canvas_vermieter.image_data.astype(np.uint8)
+                img = Image.fromarray(img_data).convert("RGBA")
 
-        if canvas_mieter.image_data is not None:
-            img_m = Image.fromarray(
-                canvas_mieter.image_data.astype("uint8"), mode="RGBA"
-            )
-            bg_m = Image.new("RGB", img_m.size, (255, 255, 255))
-            bg_m.paste(img_m, (0, 0), img_m)
-            tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            bg_m.save(tmp_m.name)
-            sig_mieter_path = tmp_m.name
-            temp_files.append(sig_mieter_path)
+                datas = img.getdata()
+                new_data = []
+                for item in datas:
+                    if item[0] > 235 and item[1] > 235 and item[2] > 235:
+                        new_data.append((255, 255, 255, 0))
+                    else:
+                        new_data.append(item)
+                img.putdata(new_data)
 
-        # Prüfen, ob noch genug Platz auf der Seite ist, sonst neue Seite
-        if pdf.get_y() > 220:
-            pdf.add_page()
+                img.save(tmp_sig1.name, "PNG")
+                tmp_sig1_path = tmp_sig1.name
+                temp_files.append(tmp_sig1_path)
 
-        y_sig = pdf.get_y()
+            pdf.image(tmp_sig1_path, x=15, y=sig_y, w=75)
 
-        # Unterschriften nebeneinander platzieren
-        pdf.set_xy(20, y_sig)
-        pdf.cell(80, 5, "________________________________________", 0, 1)
-        pdf.set_x(20)
-        pdf.cell(80, 5, "Vermieter (KARE-Immobilien)", 0, 0)
+        if (
+            canvas_mieter.image_data is not None
+            and canvas_mieter.json_data["objects"]
+        ):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig2:
+                img_data = canvas_mieter.image_data.astype(np.uint8)
+                img = Image.fromarray(img_data).convert("RGBA")
 
-        pdf.set_xy(115, y_sig)
-        pdf.cell(80, 5, "________________________________________", 0, 1)
-        pdf.set_x(115)
-        pdf.cell(80, 5, f"Mieter ({mieter})", 0, 1)
+                datas = img.getdata()
+                new_data = []
+                for item in datas:
+                    if item[0] > 235 and item[1] > 235 and item[2] > 235:
+                        new_data.append((255, 255, 255, 0))
+                    else:
+                        new_data.append(item)
+                img.putdata(new_data)
 
-        pdf.ln(2)
-        y_img = pdf.get_y()
+                img.save(tmp_sig2.name, "PNG")
+                tmp_sig2_path = tmp_sig2.name
+                temp_files.append(tmp_sig2_path)
 
-        if sig_vermieter_path and os.path.exists(sig_vermieter_path):
-            try:
-                pdf.image(sig_vermieter_path, x=25, y=y_img, w=70)
-            except:
-                pass
+            pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
 
-        if sig_mieter_path and os.path.exists(sig_mieter_path):
-            try:
-                pdf.image(sig_mieter_path, x=120, y=y_img, w=70)
-            except:
-                pass
+        pdf.ln(24)
+        pdf.set_font("helvetica", "B", 9)
+        pdf.set_text_color(51, 65, 85)
+        pdf.cell(95, 5, "________________________________________", 0, 0)
+        pdf.cell(95, 5, "________________________________________", 0, 1)
+        pdf.set_font("helvetica", size=9)
+        pdf.cell(95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0)
+        pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
 
-        # Temporäre Dateien aufräumen
-        for tmp_path in temp_files:
-            try:
-                os.remove(tmp_path)
-            except:
-                pass
-
-        # Robuste Konvertierung in Bytes für Streamlit
-        raw_output = pdf.output()
-        if isinstance(raw_output, str):
-            pdf_bytes = raw_output.encode("latin-1")
-        elif isinstance(raw_output, bytearray):
-            pdf_bytes = bytes(raw_output)
-        else:
-            pdf_bytes = raw_output
+        # PDF Download
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            pdf.output(tmp_file.name)
+            with open(tmp_file.name, "rb") as f:
+                pdf_bytes = f.read()
 
         st.download_button(
-            label="📥 PDF-Protokoll herunterladen",
+            label="📥 Modernes PDF-Protokoll herunterladen",
             data=pdf_bytes,
-            file_name=f"Wohnungs-Protokoll_{mieter.replace(' ', '_')}.pdf",
+            file_name=f"{protokoll_typ}_{mieter.replace(' ', '_')}.pdf",
             mime="application/pdf",
+            use_container_width=True,
         )
