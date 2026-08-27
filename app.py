@@ -434,7 +434,7 @@ with st.container(border=True):
             with col_r4:
                 boden_zustand = st.selectbox(
                     "Zustand Fußboden",
-                    ["i.O.", "abgewohnt"],
+                    ["i.O.", "abgewohnt", "beschädigt"],
                     key=f"boden_zustand_{raum}",
                 )
 
