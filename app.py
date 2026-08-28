@@ -139,6 +139,7 @@ with st.container(border=True):
         ort = st.text_input("Ort, PLZ")
         mieter = st.text_input("Name des Mieters")
 
+        # Als normales Text-Eingabefeld umgestellt
         mietbeginn = st.text_input(
             "Mietbeginn", placeholder="TT.MM.JJJJ", key="mietbeginn_text"
         )
@@ -904,7 +905,6 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        # Unterschrift Vermieter einfügen
         if (
             canvas_vermieter.image_data is not None
             and canvas_vermieter.json_data["objects"]
@@ -928,64 +928,48 @@ if st.button(
 
             pdf.image(tmp_sig1_path, x=15, y=sig_y, w=75)
 
-        # Unterschrift Mieter einfügen
         if (
             canvas_mieter.image_data is not None
             and canvas_mieter.json_data["objects"]
         ):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_sig2:
-                img_data_m = canvas_mieter.image_data.astype(np.uint8)
-                img_m = Image.fromarray(img_data_m).convert("RGBA")
+                img_data = canvas_mieter.image_data.astype(np.uint8)
+                img = Image.fromarray(img_data).convert("RGBA")
 
-                datas_m = img_m.getdata()
-                new_data_m = []
-                for item in datas_m:
+                datas = img.getdata()
+                new_data = []
+                for item in datas:
                     if item[0] > 235 and item[1] > 235 and item[2] > 235:
-                        new_data_m.append((255, 255, 255, 0))
+                        new_data.append((255, 255, 255, 0))
                     else:
-                        new_data_m.append(item)
-                img_m.putdata(new_data_m)
+                        new_data.append(item)
+                img.putdata(new_data)
 
-                img_m.save(tmp_sig2.name, "PNG")
+                img.save(tmp_sig2.name, "PNG")
                 tmp_sig2_path = tmp_sig2.name
                 temp_files.append(tmp_sig2_path)
 
             pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
 
-        # Linien unter den Unterschriften und Beschriftung
-        pdf.set_y(sig_y + 25)
-        pdf.set_draw_color(150, 150, 150)
-        pdf.set_line_width(0.4)
-        pdf.line(15, pdf.get_y(), 90, pdf.get_y())
-        pdf.line(115, pdf.get_y(), 190, pdf.get_y())
-        pdf.ln(2)
-
+        pdf.ln(24)
+        pdf.set_font("helvetica", "B", 9)
+        pdf.set_text_color(51, 65, 85)
+        pdf.cell(95, 5, "________________________________________", 0, 0)
+        pdf.cell(95, 5, "________________________________________", 0, 1)
         pdf.set_font("helvetica", size=9)
-        pdf.set_text_color(50, 50, 50)
-        pdf.cell(95, 5, "Unterschrift Vermieter (KARE)", 0, 0)
+        pdf.cell(95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0)
         pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
 
-        # PDF temporär speichern und als Download anbieten
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-            pdf.output(tmp_pdf.name)
-            temp_pdf_path = tmp_pdf.name
-            temp_files.append(temp_pdf_path)
-
-        with open(temp_pdf_path, "rb") as pdf_file:
-            pdf_bytes = pdf_file.read()
+        # PDF Download
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            pdf.output(tmp_file.name)
+            with open(tmp_file.name, "rb") as f:
+                pdf_bytes = f.read()
 
         st.download_button(
-            label="📥 PDF herunterladen",
+            label="📥 Modernes PDF-Protokoll herunterladen",
             data=pdf_bytes,
-            file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datum.strftime('%Y%m%d')}.pdf",
+            file_name=f"{protokoll_typ}_{mieter.replace(' ', '_')}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
-
-        # Aufräumen der temporären Dateien nach der Generierung
-        for file_path in temp_files:
-            try:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except Exception:
-                pass
