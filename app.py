@@ -477,7 +477,7 @@ with st.container():
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand":boden_zustand,
+                "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -509,10 +509,10 @@ with st.container():
     with col_sig1:
         st.write("**Vermieter (KARE)**")
         canvas_vermieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 0)",
+            fill_color="rgba(0, 0, 0, 0)",
             stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="rgba(0, 0, 0, 0)",
             update_streamlit=True,
             height=150,
             width=280,
@@ -523,10 +523,10 @@ with st.container():
     with col_sig2:
         st.write("**Mieter**")
         canvas_mieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 0)",
+            fill_color="rgba(0, 0, 0, 0)",
             stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="rgba(0, 0, 0, 0)",
             update_streamlit=True,
             height=150,
             width=280,
@@ -870,7 +870,6 @@ if st.button(
         )
         pdf.ln(8)
 
-        # Ziel-Y-Position für die Signaturlinie festlegen
         line_y = pdf.get_y() + 22
 
         def process_signature(canvas_result, pdf_obj, x_pos, target_y, width):
@@ -880,17 +879,17 @@ if st.button(
                     img_array = img_data.astype("uint8")
                     pil_img = Image.fromarray(img_array, mode="RGBA")
                     
-                    rgb_img = pil_img.convert("RGB")
+                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                    background.paste(pil_img, (0, 0), pil_img)
                     
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        rgb_img.save(tmp.name, "PNG")
+                        background.save(tmp.name, "PNG")
                         tmp_path = tmp.name
                         temp_files.append(tmp_path)
 
-                    w_orig, h_orig = rgb_img.size
+                    w_orig, h_orig = background.size
                     if w_orig > 0:
                         height = (width / w_orig) * h_orig
-                        # Bild direkt oberhalb der Linie positionieren
                         pdf_obj.image(
                             tmp_path,
                             x=x_pos,
@@ -899,11 +898,9 @@ if st.button(
                             h=height,
                         )
 
-        # Signaturen über den Linien platzieren
         process_signature(canvas_vermieter, pdf, 15, line_y, 75)
         process_signature(canvas_mieter, pdf, 115, line_y, 75)
 
-        # Linien und Beschriftungen zeichnen
         pdf.set_y(line_y)
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(51, 65, 85)
