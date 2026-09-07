@@ -150,14 +150,20 @@ with tab5:
     for r, d in heizungs_daten.items():
         st.write(f"- {r}: Stand {d['stand']} (Nr. {d['nummer']})")
 
-    # Sichere Abfrage der Canvas-Daten (behebt den RuntimeError)
+    # Sichere Abfrage der Canvas-Daten mittels try-except, um den RuntimeError zu verhindern[cite: 1]
     sig_vermieter_vorhanden = False
-    if canvas_vermieter and hasattr(canvas_vermieter, "image_data") and canvas_vermieter.image_data is not None:
-        sig_vermieter_vorhanden = True
+    try:
+        if canvas_vermieter is not None and getattr(canvas_vermieter, "image_data", None) is not None:
+            sig_vermieter_vorhanden = True
+    except Exception:
+        sig_vermieter_vorhanden = False
 
     sig_mieter_vorhanden = False
-    if canvas_mieter and hasattr(canvas_mieter, "image_data") and canvas_mieter.image_data is not None:
-        sig_mieter_vorhanden = True
+    try:
+        if canvas_mieter is not None and getattr(canvas_mieter, "image_data", None) is not None:
+            sig_mieter_vorhanden = True
+    except Exception:
+        sig_mieter_vorhanden = False
 
     st.success(f"Unterschrift Vermieter erfasst: {'Ja' if sig_vermieter_vorhanden else 'Nein (leer)'}")
     st.success(f"Unterschrift Mieter erfasst: {'Ja' if sig_mieter_vorhanden else 'Nein (leer)'}")
@@ -165,3 +171,4 @@ with tab5:
     if st.button("Protokoll als Daten-Übersicht anzeigen"):
         st.balloons()
         st.info("Alle Protokolldaten sind vollständig erfasst und bereit.")
+```[cite: 1]
