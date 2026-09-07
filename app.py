@@ -1,384 +1,945 @@
-import os
-import io
 from datetime import datetime
+import os
+import tempfile
+from fpdf import FPDF
+import numpy as np
+from PIL import Image, ImageOps, ImageDraw
 import streamlit as st
-import pandas as pd
-from PIL import Image
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from streamlit_drawable_canvas import st_canvas
 
-# --- SEITENKONFIGURATION ---
+# 1. Seitenkonfiguration
 st.set_page_config(
-    page_title="KARE-Immobilien - Wohnungsabnahmeprotokoll",
-    page_icon="🏠",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Wohnungsabnahme", page_icon="🏠", layout="centered"
 )
 
-# --- STYLING & DESIGN ---
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 26px;
-        font-weight: 700;
-        color: #1E3A8A;
-        margin-bottom: 5px;
-    }
-    .sub-header {
-        font-size: 14px;
-        color: #64748B;
-        margin-bottom: 25px;
-    }
-    .section-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #0F172A;
-        border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 5px;
-        margin-top: 20px;
-        margin-bottom: 15px;
-    }
-    .stButton>button {
-        background-color: #1E3A8A;
-        color: white;
-        font-weight: 600;
-        border-radius: 6px;
-        padding: 0.5rem 1rem;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #3B82F6;
-        color: white;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- HEADER & FIRMENDATEN ---
-st.markdown('<div class="main-header">🏠 KARE-Immobilien – Wohnungsabnahmeprotokoll</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Talstr. 32, 07545 Gera | Tel.: 0365 / 800 49 37 | E-Mail: Info@KARE-Immobilien.de</div>', unsafe_allow_html=True)
-
-with st.sidebar:
-    st.image("https://img.icons8.com/color/96/real-estate.png", width=70)
-    st.markdown("### Navigation & Status")
-    current_step = st.radio("Bereiche wählen:", [
-        "1. Stammdaten",
-        "2. Zählerstände",
-        "3. Raum-Check & Mängel",
-        "4. Schlüsselübergabe",
-        "5. Unterschriften & PDF Export"
-    ])
-    st.markdown("---")
-    st.info("💡 Tipp: Füllen Sie alle Felder sorgfältig aus, um das Übergabeprotokoll fehlerfrei als PDF zu generieren.")
-
-# --- SESSION STATE INITIALISIERUNG ---
-if "data" not in st.session_state:
-    st.session_state.data = {
-        "vermieter": "KARE-Immobilien",
-        "ansprechpartner": "",
-        "mieter": "",
-        "objekt_adresse": "",
-        "einzug_auszug": "Auszug",
-        "datum": datetime.today().date(),
-        "schluessel": {
-            "Wohnungstür": 2,
-            "Haustür": 2,
-            "Keller": 1,
-            "Briefkasten": 1,
-            "Garage/Stellplatz": 0
-        },
-        "zaehler": {
-            "kaltwasser": {"stand": "", "nr": ""},
-            "warmwasser": {"stand": "", "nr": ""},
-            "heizung": {
-                "Wohnzimmer": {"stand": "", "nr": ""},
-                "Kinderzimmer": {"stand": "", "nr": ""},
-                "Flur": {"stand": "", "nr": ""},
-                "Bad": {"stand": "", "nr": ""},
-                "Küche": {"stand": "", "nr": ""}
-            }
-        },
-        "raeume": [
-            "Flur", "Wohnzimmer", "Schlafzimmer", "Kinderzimmer", 
-            "Küche", "Badezimmer", "Keller", "Balkon / Terrasse"
-        ],
-        "maengel": {},
-        "notizen": ""
-    }
-
-d = st.session_state.data
-
-# ==========================================
-# 1. STAMMDATEN
-# ==========================================
-if current_step == "1. Stammdaten":
-    st.markdown('<div class="section-title">1. Allgemeine Stammdaten & Vertragsparteien</div>', unsafe_allow_html=True)
+# 2. Modernes CSS Styling einfügen
+st.markdown(
+    """
+<style>
+    /* Blendet das Streamlit-Menü und Footer aus */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
     
+    /* Etwas weniger Abstand oben, damit es auf dem iPad besser passt */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 3rem;
+    }
+    
+    /* Primärer Button bekommt abgerundete Ecken und wirkt moderner */
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: 600;
+        height: 3rem;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+# Hilfsfunktion für abgerundete Ecken am Logo
+def add_rounded_corners(image_path, radius=20):
+    img = Image.open(image_path).convert("RGBA")
+    mask = Image.new("L", img.size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle([(0, 0), img.size], radius=radius, fill=255)
+
+    rounded_img = Image.new("RGBA", img.size)
+    rounded_img.paste(img, (0, 0), mask=mask)
+    return rounded_img
+
+
+# 3. Klasse für das PDF-Layout mit grünem Rahmen
+class ModernPDF(FPDF):
+
+    def draw_page_border(self):
+        self.set_draw_color(46, 125, 50)
+        self.set_line_width(0.8)
+        self.rect(4, 4, 202, 289, style="D")
+
+    def header(self):
+        self.draw_page_border()
+
+        if self.page_no() == 1:
+            logo_path = "kare_logo.png"
+            if os.path.exists(logo_path):
+                rounded_logo = add_rounded_corners(logo_path, radius=25)
+                temp_logo_path = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ).name
+                rounded_logo.save(temp_logo_path)
+
+                self.image(temp_logo_path, x=35, y=10, w=140)
+                self.ln(38)
+            else:
+                self.set_font("helvetica", "B", 10)
+                self.cell(0, 5, "KARE-Immobilien Protokoll", 0, 1, "L")
+                self.ln(5)
+        else:
+            self.ln(12)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("helvetica", "", 8)
+        self.set_text_color(120, 120, 120)
+        self.line(14, self.get_y() - 2, 196, self.get_y() - 2)
+        self.cell(
+            0,
+            8,
+            f"Erstellt am {datetime.now().strftime('%d.%m.%Y um %H:%M Uhr')}  -  Seite {self.page_no()}",
+            0,
+            0,
+            "C",
+        )
+
+    def chapter_title(self, title):
+        self.ln(4)
+        self.set_font("helvetica", "B", 11)
+        self.set_text_color(30, 41, 59)
+        self.cell(0, 7, title, 0, 1, "L")
+        self.set_draw_color(30, 41, 59)
+        self.set_line_width(0.6)
+        self.line(10, self.get_y(), 50, self.get_y())
+        self.ln(4)
+
+
+# --- HEADER BEREICH IN DER APP ---
+logo_path = "kare_logo.png"
+if os.path.exists(logo_path):
+    st.image(logo_path, width=400)
+else:
+    st.warning(
+        "⚠️ Hinweis: Die Datei 'kare_logo.png' wurde nicht im App-Ordner gefunden."
+    )
+    st.markdown(
+        "<h1 style='text-align: center;'>🏠 KARE-Immobilien Protokoll</h1>",
+        unsafe_allow_html=True,
+    )
+
+st.write("")
+
+# --- ABSCHNITT 0: PROTOKOLL ART ---
+with st.container(border=True):
+    st.subheader("📑 Art des Protokolls")
+    protokoll_typ = st.radio(
+        "Wähle die Art des Protokolls:",
+        ["Wohnungsübergabeprotokoll", "Wohnungsabnahmeprotokoll"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+# --- ABSCHNITT 1: STAMMDATEN ---
+with st.container(border=True):
+    st.subheader("👤 1. Stammdaten")
     col1, col2 = st.columns(2)
     with col1:
-        d["vermieter"] = st.text_input("Vermieter / Verwaltung", value=d["vermieter"])
-        d["ansprechpartner"] = st.text_input("Name des Übergabe-Ansprechpartners", value=d["ansprechpartner"])
-        d["objekt_adresse"] = st.text_area("Objektadresse (Straße, PLZ, Ort)", value=d["objekt_adresse"])
-    
+        wohnung = st.text_input("Adresse der Wohnung (Straße, Hausnr.)")
+        ort = st.text_input("Ort, PLZ")
+        mieter = st.text_input("Name des Mieters")
+
+        mietbeginn = st.text_input(
+            "Mietbeginn", placeholder="TT.MM.JJJJ", key="mietbeginn_text"
+        )
+
+        mietende = ""
+        if protokoll_typ == "Wohnungsabnahmeprotokoll":
+            mietende = st.text_input(
+                "Mietende", placeholder="TT.MM.JJJJ", key="mietende_text"
+            )
+
     with col2:
-        d["mieter"] = st.text_input("Mieter (Neu / Alt)", value=d["mieter"])
-        d["einzug_auszug"] = st.selectbox("Protokollart", ["Auszug (Übergabe an Vermieter)", "Einzug (Übergabe an Mieter)"], index=0 if "Auszug" in d["einzug_auszug"] else 1)
-        d["datum"] = st.date_input("Datum der Übergabe", value=d["datum"])
+        vermieter = st.text_input("Name des Vermieters", value="KARE-Immobilien")
+        etage = st.text_input("Etage (z.B. 2. Obergeschoss)")
+        quadratmeter = st.number_input(
+            "Wohnfläche (m²)", value=0.0, format="%.2f", step=1.0
+        )
+        datum = st.date_input(
+            "Datum der Begehung/Übergabe",
+            format="DD.MM.YYYY",
+            key="begehung_datum",
+        )
 
-# ==========================================
-# 2. ZÄHLERSTÄNDE
-# ==========================================
-elif current_step == "2. Zählerstände":
-    st.markdown('<div class="section-title">2. Zählerstände (Wasser & Heizung)</div>', unsafe_allow_html=True)
-    
-    st.subheader("💧 Wasserzähler")
-    colw1, colw2 = st.columns(2)
-    with colw1:
-        st.markdown("**Kaltwasserzähler**")
-        d["zaehler"]["kaltwasser"]["nr"] = st.text_input("Zählernummer (Kaltwasser)", value=d["zaehler"]["kaltwasser"]["nr"])
-        d["zaehler"]["kaltwasser"]["stand"] = st.text_input("Zählerstand (m³) - Kaltwasser", value=d["zaehler"]["kaltwasser"]["stand"])
-    with colw2:
-        st.markdown("**Warmwasserzähler**")
-        d["zaehler"]["warmwasser"]["nr"] = st.text_input("Zählernummer (Warmwasser)", value=d["zaehler"]["warmwasser"]["nr"])
-        d["zaehler"]["warmwasser"]["stand"] = st.text_input("Zählerstand (m³) - Warmwasser", value=d["zaehler"]["warmwasser"]["stand"])
+    neue_adresse_mieter = ""
+    if protokoll_typ == "Wohnungsabnahmeprotokoll":
+        st.write("")
+        st.write("**Neue Anschrift des ausziehenden Mieters**")
+        neue_adresse_mieter = st.text_area(
+            "Neue Adresse (Straße, PLZ, Ort)",
+            placeholder="Wird für die Kautionsrückzahlung benötigt...",
+            label_visibility="collapsed",
+        )
 
-    st.markdown("---")
-    st.subheader("🔥 Heizungszähler (Heizkostenverteiler / Wärmemengenzähler)")
-    st.markdown("Erfassung für die 5 definierten Räume:")
-    
-    for raum in ["Wohnzimmer", "Kinderzimmer", "Flur", "Bad", "Küche"]:
-        st.markdown(f"**Raum: {raum}**")
-        colh1, colh2 = st.columns(2)
-        with colh1:
-            d["zaehler"]["heizung"][raum]["nr"] = st.text_input(f"Zählernummer ({raum})", value=d["zaehler"]["heizung"][raum]["nr"], key=f"h_nr_{raum}")
-        with colh2:
-            d["zaehler"]["heizung"][raum]["stand"] = st.text_input(f"Zählerstand ({raum})", value=d["zaehler"]["heizung"][raum]["stand"], key=f"h_std_{raum}")
+# --- ABSCHNITT 2: KAUTION & SCHLÜSSEL ---
+with st.container(border=True):
+    st.subheader("💶 2. Kaution & 🔑 Schlüssel")
 
-# ==========================================
-# 3. RAUM-CHECK & MÄNGEL
-# ==========================================
-elif current_step == "3. Raum-Check & Mängel":
-    st.markdown('<div class="section-title">3. Raum-Check & Mängelerfassung</div>', unsafe_allow_html=True)
-    st.write("Überprüfen Sie die Räume auf Zustand und eventuelle Mängel.")
-    
-    for raum in d["raeume"]:
-        with st.expander(f"📍 Raum: {raum}", expanded=False):
-            if raum not in d["maengel"]:
-                d["maengel"][raum] = {"zustand": "Einwandfrei", "beschreibung": "", "sperrmuell": False}
-            
-            d["maengel"][raum]["zustand"] = st.selectbox(
-                f"Zustand {raum}", 
-                ["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"],
-                index=["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"].index(d["maengel"][raum]["zustand"]) if d["maengel"][raum]["zustand"] in ["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"] else 0,
-                key=f"zustand_{raum}"
+    kaution_betrag = 0.0
+    kaution_status = ""
+    kaution_raten_anzahl = 0
+    kaution_raten_notiz = ""
+    kaution_einbehalt = ""
+    kaution_einbehalt_betrag = 0.0
+
+    if protokoll_typ == "Wohnungsübergabeprotokoll":
+        col_k1, col_k2 = st.columns(2)
+        with col_k1:
+            kaution_betrag = st.number_input(
+                "Kautionssumme (€)", value=0.00, format="%.2f", step=50.00
             )
-            d["maengel"][raum]["beschreibung"] = st.text_area(
-                f"Beschreibung von Mängeln / Besonderheiten in {raum}",
-                value=d["maengel"][raum]["beschreibung"],
-                key=f"desc_{raum}"
+        with col_k2:
+            kaution_status = st.selectbox(
+                "Status der Kaution",
+                [
+                    "Noch nicht gezahlt / überwiesen",
+                    "Bereits gezahlt / überwiesen",
+                    "Bar übergeben",
+                    "Ratenzahlung",
+                ],
             )
 
-    st.markdown("---")
-    d["notizen"] = st.text_area("Allgemeine Anmerkungen / Vereinbarungen", value=d["notizen"])
+        if kaution_status == "Ratenzahlung":
+            st.write("")
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
+                kaution_raten_anzahl = st.number_input(
+                    "Anzahl der Raten", min_value=1, value=3, step=1
+                )
+            with col_r2:
+                kaution_raten_notiz = st.text_input(
+                    "Details zur Ratenzahlung",
+                    placeholder="z.B. jeweils zum 1. des Monats...",
+                )
+    else:
+        st.write("🛡️ **Einbehalt der Kaution**")
+        col_e1, col_e2 = st.columns([1, 2])
+        with col_e1:
+            kaution_einbehalt_betrag = st.number_input(
+                "Einbehalt in €",
+                value=0.00,
+                format="%.2f",
+                step=50.00,
+                key="einbehalt_betrag_input",
+            )
+        with col_e2:
+            kaution_einbehalt = st.text_input(
+                "Grund / Forderungen für den Einbehalt",
+                placeholder="z.B. Nachzahlung Nebenkosten, offene Reparaturen...",
+                key="einbehalt_grund_input",
+            )
 
-# ==========================================
-# 4. SCHLÜSSELÜBERGABE
-# ==========================================
-elif current_step == "4. Schlüsselübergabe":
-    st.markdown('<div class="section-title">4. Schlüsselübergabe</div>', unsafe_allow_html=True)
-    st.write("Geben Sie die Anzahl der übergebenen Schlüssel je Schlossart an:")
-    
-    cols = st.columns(3)
-    idx = 0
-    for schluessel_typ, anzahl in d["schluessel"].items():
-        with cols[idx % 3]:
-            d["schluessel"][schluessel_typ] = st.number_input(f"{schluessel_typ}", min_value=0, max_value=20, value=anzahl, step=1)
-        idx += 1
+    st.divider()
+    st.write("**Übergebene Schlüssel**")
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        s_wohnung = st.number_input("Wohnung", min_value=0, value=0, step=1)
+        s_haustür = st.number_input("Haustür", min_value=0, value=0, step=1)
+    with col_s2:
+        s_zimmer = st.number_input("Zimmer", min_value=0, value=0, step=1)
+        s_briefkasten = st.number_input("Briefkasten", min_value=0, value=0, step=1)
+    with col_s3:
+        s_keller = st.number_input("Keller", min_value=0, value=0, step=1)
 
-# ==========================================
-# 5. UNTERSCHRIFTEN & PDF EXPORT
-# ==========================================
-elif current_step == "5. Unterschriften & PDF Export":
-    st.markdown('<div class="section-title">5. Unterschriften & PDF-Generierung</div>', unsafe_allow_html=True)
-    
-    col_u1, col_u2 = st.columns(2)
-    
-    with col_u1:
-        st.markdown("**Unterschrift Vermietung / Vertreter**")
+    if "weitere_schluessel" not in st.session_state:
+        st.session_state.weitere_schluessel = []
+
+    with st.expander("➕ Weitere Schlüssel hinzufügen"):
+        col_ns1, col_ns2, col_ns3 = st.columns([2, 1, 1])
+        with col_ns1:
+            ns_bez = st.text_input("Bezeichnung (z.B. Dachboden, Garage)", key="ns_bez_input")
+        with col_ns2:
+            ns_anzahl = st.number_input(
+                "Anzahl", min_value=1, value=1, step=1, key="ns_anz"
+            )
+        with col_ns3:
+            st.write("")
+            st.write("")
+            if st.button("Hinzufügen", key="btn_add_schl", use_container_width=True):
+                if ns_bez:
+                    st.session_state.weitere_schluessel.append(
+                        {"bezeichnung": ns_bez, "anzahl": ns_anzahl}
+                    )
+                    st.rerun()
+
+    if st.session_state.weitere_schluessel:
+        for idx, item in enumerate(st.session_state.weitere_schluessel):
+            col_del1, col_del2 = st.columns([4, 1])
+            with col_del1:
+                st.info(f"🔑 {item['bezeichnung']}: **{item['anzahl']} Stück**")
+            with col_del2:
+                if st.button("❌ Löschen", key=f"del_schl_{idx}"):
+                    st.session_state.weitere_schluessel.pop(idx)
+                    st.rerun()
+
+# --- ABSCHNITT 3: ZÄHLERSTÄNDE ---
+with st.container(border=True):
+    st.subheader("⚡ 3. Zählerstände")
+
+    if "zaehler_liste" not in st.session_state:
+        st.session_state.zaehler_liste = [
+            {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
+            {"typ": "Wasser", "bezeichnung": "Wasser Hauptzähler", "einheit": "m³"},
+            {"typ": "Heizung", "bezeichnung": "Heizung", "einheit": "Einheiten"},
+        ]
+
+    with st.expander("➕ Weiteren Zähler hinzufügen"):
+        z_typ = st.selectbox(
+            "Zählertyp",
+            ["Strom", "Wasser", "Heizung", "Gas", "Sonstige"],
+            key="select_z_typ",
+        )
+        z_bez = st.text_input("Bezeichnung (z.B. Keller, Küche)", key="neu_zaehler_bez")
+        z_einheit = st.text_input(
+            "Maßeinheit (z.B. kWh, m³, Liter)", value="kWh", key="neu_zaehler_einheit"
+        )
+        if st.button("Zähler speichern", key="btn_add_z"):
+            if z_bez:
+                st.session_state.zaehler_liste.append({
+                    "typ": z_typ,
+                    "bezeichnung": z_bez,
+                    "einheit": z_einheit,
+                })
+                st.rerun()
+
+    zaehler_daten = []
+    for i, z in enumerate(st.session_state.zaehler_liste):
+        st.write(f"**{z['typ']}** – {z['bezeichnung']}")
+        col_z1, col_z2 = st.columns(2)
+        with col_z1:
+            z_nr = st.text_input(
+                "Zählernummer",
+                key=f"z_nr_{i}",
+                placeholder="Zählernummer eingeben...",
+            )
+        with col_z2:
+            z_wert = st.number_input(
+                f"Zählerstand ({z['einheit']})",
+                value=0.000,
+                format="%.3f",
+                step=0.001,
+                key=f"z_wert_{i}",
+            )
+
+        zaehler_daten.append({
+            "typ": z["typ"],
+            "bezeichnung": z["bezeichnung"],
+            "nummer": z_nr,
+            "stand": z_wert,
+            "einheit": z["einheit"],
+        })
+        if i < len(st.session_state.zaehler_liste) - 1:
+            st.write("")
+
+# --- ABSCHNITT 4: ZUSTAND DER RÄUME ---
+with st.container(border=True):
+    st.subheader("🛋️ 4. Zustand der Räume")
+
+    if "boden_optionen" not in st.session_state:
+        st.session_state.boden_optionen = [
+            "Parkett",
+            "Laminat",
+            "Auslegware",
+            "Fliesen",
+            "Designbelag",
+            "PVC",
+            "ohne Belag",
+        ]
+
+    if "raeume_liste" not in st.session_state:
+        st.session_state.raeume_liste = [
+            "Flur",
+            "Küche",
+            "Badezimmer",
+            "Wohnzimmer",
+            "Schlafzimmer",
+            "Keller",
+            "Balkon",
+            "Abstellraum",
+        ]
+
+    col_neu1, col_neu2 = st.columns([3, 1])
+    with col_neu1:
+        neuer_raum_name = st.text_input(
+            "Neuen Raum hinzufügen",
+            placeholder="z.B. Gäste-WC, Dachboden...",
+            label_visibility="collapsed",
+            key="neu_raum_input",
+        )
+    with col_neu2:
+        if st.button("➕ Hinzufügen", key="btn_add_raum", use_container_width=True):
+            if (
+                neuer_raum_name
+                and neuer_raum_name not in st.session_state.raeume_liste
+            ):
+                st.session_state.raeume_liste.append(neuer_raum_name)
+                st.rerun()
+
+    st.write("")
+    zustaende = {}
+    for raum in st.session_state.raeume_liste:
+        with st.expander(f"📍 {raum}"):
+            zustand = st.radio(
+                f"Allgemeiner Zustand für {raum}",
+                ["Einwandfrei", "Leichte Mängel", "Schwere Mängel"],
+                key=f"zustand_{raum}",
+                horizontal=True,
+            )
+
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
+                waende_dechen = st.selectbox(
+                    "Wände & Decken",
+                    ["gemalert (i.O.)", "nicht gemalert", "scheckig"],
+                    key=f"waende_{raum}",
+                )
+            with col_r2:
+                duebelloecher = st.number_input(
+                    "Anzahl Dübellöcher",
+                    min_value=0,
+                    value=0,
+                    step=1,
+                    key=f"duebel_{raum}",
+                )
+
+            col_r3, col_r4 = st.columns(2)
+            with col_r3:
+                boden_dropdown = st.selectbox(
+                    "Bodenbelag",
+                    st.session_state.boden_optionen,
+                    key=f"boden_dropdown_{raum}",
+                )
+                neuer_boden = st.text_input(
+                    "Neuen Bodenbelag dauerhaft hinzufügen",
+                    placeholder="Eintragen & Enter drücken...",
+                    key=f"neuer_boden_{raum}",
+                )
+
+                if neuer_boden and neuer_boden not in st.session_state.boden_optionen:
+                    st.session_state.boden_optionen.append(neuer_boden)
+                    st.rerun()
+
+                boden_belag = (
+                    neuer_boden.strip() if neuer_boden.strip() else boden_dropdown
+                )
+
+            with col_r4:
+                boden_zustand = st.selectbox(
+                    "Zustand Fußboden",
+                    ["i.O.", "abgewohnt", "beschädigt"],
+                    key=f"boden_zustand_{raum}",
+                )
+
+            fliesen_gerissen_ja = False
+            fliesen_anzahl_risse = 0
+            if "fliesen" in boden_belag.lower():
+                st.write("🧱 **Fliesen-Prüfung**")
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    fliesen_gerissen_ja = st.checkbox(
+                        "Fliesen gerissen?", key=f"fliesen_riss_{raum}"
+                    )
+                with col_f2:
+                    if fliesen_gerissen_ja:
+                        fliesen_anzahl_risse = st.number_input(
+                            "Anzahl gerissener Fliesen",
+                            min_value=1,
+                            value=1,
+                            step=1,
+                            key=f"fliesen_anz_{raum}",
+                        )
+
+            schadstellen_ja = st.checkbox(
+                "Allgemeine Schadstellen vorhanden", key=f"schad_ja_{raum}"
+            )
+            schadstellen_gr = ""
+            schadstellen_beschr = ""
+            if schadstellen_ja:
+                col_s1, col_s2 = st.columns(2)
+                with col_s1:
+                    schadstellen_gr = st.text_input(
+                        "Größe der Schadstelle",
+                        placeholder="z.B. 5x5 cm",
+                        key=f"schad_gr_{raum}",
+                    )
+                with col_s2:
+                    schadstellen_beschr = st.text_input(
+                        "Beschreibung Schadstelle",
+                        placeholder="z.B. Kratzer, Riss",
+                        key=f"schad_beschr_{raum}",
+                    )
+
+            kommentar = st.text_area(
+                f"Allgemeine Bemerkungen zu {raum}:", key=f"kom_{raum}", height=68
+            )
+
+            fotos = st.file_uploader(
+                f"Beweisfotos für {raum} anhängen (mehrere möglich)",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key=f"foto_{raum}",
+            )
+
+            zustaende[raum] = {
+                "zustand": zustand,
+                "waende_dechen": waende_dechen,
+                "duebelloecher": duebelloecher,
+                "boden_belag": boden_belag,
+                "boden_zustand": boden_zustand,
+                "fliesen_gerissen_ja": fliesen_gerissen_ja,
+                "fliesen_anzahl_risse": fliesen_anzahl_risse,
+                "schadstellen_ja": schadstellen_ja,
+                "schadstellen_gr": schadstellen_gr,
+                "schadstellen_beschr": schadstellen_beschr,
+                "kommentar": kommentar,
+                "fotos": fotos,
+            }
+
+# --- ABSCHNITT 5: BEMERKUNGEN ---
+with st.container(border=True):
+    st.subheader("📝 5. Sonstige Bemerkungen")
+    sonstige_bemerkungen = st.text_area(
+        "Zusätzliche Vereinbarungen oder Bemerkungen",
+        placeholder=(
+            "z.B. Schönheitsreparaturen bis zum 15.04. vereinbart, Küche wird"
+            " übernommen..."
+        ),
+        label_visibility="collapsed",
+        height=100,
+    )
+
+# --- ABSCHNITT 6: UNTERSCHRIFTEN ---
+with st.container(border=True):
+    st.subheader("✍️ 6. Unterschriften")
+    st.write(
+        "Bitte unterschreiben Sie mit dem Finger oder einem Stift direkt im Feld."
+    )
+
+    col_sig1, col_sig2 = st.columns(2)
+
+    with col_sig1:
+        st.write("**Vermieter (KARE)**")
         canvas_vermieter = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",
-            stroke_width=2,
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="#f0f2f6",
             height=150,
-            width=350,
+            width=280,
             drawing_mode="freedraw",
-            key="canvas_v"
+            key="canvas_vermieter",
         )
-        
-    with col_u2:
-        st.markdown("**Unterschrift Mieter**")
+
+    with col_sig2:
+        st.write("**Mieter**")
         canvas_mieter = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",
-            stroke_width=2,
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="#f0f2f6",
             height=150,
-            width=350,
+            width=280,
             drawing_mode="freedraw",
-            key="canvas_m"
+            key="canvas_mieter",
         )
-        
-    st.markdown("---")
-    
-    if st.button("📄 Wohnungsabnahmeprotokoll als PDF erstellen"):
-        # Sichere Extraktion der Canvas-Daten mit Fehlerbehandlung
-        vermieter_unterschrift_img = None
-        try:
-            if canvas_vermieter is not None and hasattr(canvas_vermieter, "image_data") and canvas_vermieter.image_data is not None:
-                vermieter_unterschrift_img = canvas_vermieter.image_data
-        except Exception:
-            vermieter_unterschrift_img = None
 
-        mieter_unterschrift_img = None
-        try:
-            if canvas_mieter is not None and hasattr(canvas_mieter, "image_data") and canvas_mieter.image_data is not None:
-                mieter_unterschrift_img = canvas_mieter.image_data
-        except Exception:
-            mieter_unterschrift_img = None
+st.write("")
 
-        # PDF Generierung via ReportLab
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Titel
-        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#1E3A8A'), spaceAfter=4)
-        subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#64748B'), spaceAfter=15)
-        
-        story.append(Paragraph("KARE-Immobilien – Wohnungsabnahmeprotokoll", title_style))
-        story.append(Paragraph("Talstr. 32, 07545 Gera | Tel.: 0365 / 800 49 37 | E-Mail: Info@KARE-Immobilien.de", subtitle_style))
-        
-        # Stammdaten Tabelle
-        meta_data = [
-            [Paragraph(f"<b>Objekt:</b> {d['objekt_adresse']}", styles['Normal']), Paragraph(f"<b>Datum:</b> {d['datum'].strftime('%d.%m.%Y')}", styles['Normal'])],
-            [Paragraph(f"<b>Vermieter:</b> {d['vermieter']} (Ansprechpartner: {d['ansprechpartner']})", styles['Normal']), Paragraph(f"<b>Mieter:</b> {d['mieter']}", styles['Normal'])],
-            [Paragraph(f"<b>Protokollart:</b> {d['einzug_auszug']}", styles['Normal']), Paragraph("", styles['Normal'])]
-        ]
-        t_meta = Table(meta_data, colWidths=[270, 270])
-        t_meta.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('PADDING', (0,0), (-1,-1), 6),
-        ]))
-        story.append(t_meta)
-        story.append(Spacer(1, 15))
-        
-        # Zählerstände
-        story.append(Paragraph("<b>Zählerstände</b>", styles['Heading2']))
-        zaehler_rows = [
-            ["Zählertyp", "Zählernummer", "Zählerstand"],
-            ["Kaltwasser", d["zaehler"]["kaltwasser"]["nr"], d["zaehler"]["kaltwasser"]["stand"] + " m³"],
-            ["Warmwasser", d["zaehler"]["warmwasser"]["nr"], d["zaehler"]["warmwasser"]["stand"] + " m³"]
-        ]
-        for r_name, r_vals in d["zaehler"]["heizung"].items():
-            zaehler_rows.append([f"Heizung ({r_name})", r_vals["nr"], r_vals["stand"]])
-            
-        t_zaehler = Table(zaehler_rows, colWidths=[180, 180, 180])
-        t_zaehler.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#FFFFFF')),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('PADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(t_zaehler)
-        story.append(Spacer(1, 15))
-        
-        # Raum-Check
-        story.append(Paragraph("<b>Raum-Check & Mängel</b>", styles['Heading2']))
-        raum_rows = [["Raum", "Zustand", "Mängel / Beschreibung"]]
-        for raum, m in d["maengel"].items():
-            raum_rows.append([raum, m["zustand"], m["beschreibung"] if m["beschreibung"] else "Keine Mängel"])
-            
-        t_raeume = Table(raum_rows, colWidths=[130, 120, 290])
-        t_raeume.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('PADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(t_raeume)
-        story.append(Spacer(1, 15))
-        
-        # Schlüssel
-        story.append(Paragraph("<b>Schlüsselübergabe</b>", styles['Heading2']))
-        schluessel_rows = [["Schlüsselart", "Anzahl"]]
-        for art, anz in d["schluessel"].items():
-            schluessel_rows.append([art, str(anz)])
-        t_schl = Table(schluessel_rows, colWidths=[270, 270])
-        t_schl.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('PADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(t_schl)
-        story.append(Spacer(1, 25))
-        
-        # Unterschriften
-        story.append(Paragraph("<b>Unterschriften</b>", styles['Heading2']))
-        story.append(Paragraph("Mit den Unterschriften wird die Richtigkeit der obigen Angaben sowie die ordnungsgemäße Übergabe bestätigt.", styles['Normal']))
-        story.append(Spacer(1, 15))
-        
-        # Convert canvas images if available
-        sig_v_flowable = Paragraph("Unterschrift Vermietung<br/><br/><br/>___________________________", styles['Normal'])
-        if vermieter_unterschrift_img is not None:
-            try:
-                img_v_pil = Image.fromarray(vermieter_unterschrift_img.astype('uint8'), mode='RGBA')
-                img_v_io = io.BytesIO()
-                img_v_pil.save(img_v_io, format='PNG')
-                img_v_io.seek(0)
-                from reportlab.platypus import Image as RLImage
-                sig_v_flowable = RLImage(img_v_io, width=150, height=65)
-            except Exception:
-                pass
+# --- SPEICHERN BUTTON & PDF GENERIERUNG ---
+if st.button(
+    "📄 Protokoll generieren & herunterladen",
+    type="primary",
+    use_container_width=True,
+):
+    if not wohnung or not mieter:
+        st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
+    else:
+        st.success(
+            "Protokoll wurde erfolgreich erstellt! Der Download startet gleich."
+        )
+        st.balloons()
 
-        sig_m_flowable = Paragraph("Unterschrift Mieter<br/><br/><br/>___________________________", styles['Normal'])
-        if mieter_unterschrift_img is not None:
-            try:
-                img_m_pil = Image.fromarray(mieter_unterschrift_img.astype('uint8'), mode='RGBA')
-                img_m_io = io.BytesIO()
-                img_m_pil.save(img_m_io, format='PNG')
-                img_m_io.seek(0)
-                from reportlab.platypus import Image as RLImage
-                sig_m_flowable = RLImage(img_m_io, width=150, height=65)
-            except Exception:
-                pass
+        # PDF Erstellung starten (ModernPDF Klasse nutzen)
+        pdf = ModernPDF()
+        pdf.add_page()
+        pdf.set_font("helvetica", size=10)
 
-        t_sig = Table([[sig_v_flowable, sig_m_flowable]], colWidths=[270, 270])
-        t_sig.setStyle(TableStyle([
-            ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ]))
-        story.append(KeepTogether([t_sig]))
+        # Dokumententitel (Groß & Modern)
+        pdf.set_font("helvetica", "B", 15)
+        pdf.set_text_color(15, 23, 42)
+        pdf.cell(0, 8, protokoll_typ.upper(), 0, 1, "C")
+        pdf.ln(5)
 
-        doc.build(story)
-        buffer.seek(0)
-        
-        st.success("PDF erfolgreich erstellt!")
+        # 1. Stammdaten
+        pdf.chapter_title("1. Stammdaten")
+        pdf.set_font("helvetica", size=10)
+        pdf.set_text_color(51, 65, 85)
+
+        pdf.cell(45, 6, "Objektadresse:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            f"{wohnung.encode('latin-1', 'replace').decode('latin-1')}, {ort.encode('latin-1', 'replace').decode('latin-1')}",
+            0,
+            1,
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Etage / Fläche:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            f"{etage.encode('latin-1', 'replace').decode('latin-1')}  |  {quadratmeter} m²",
+            0,
+            1,
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Mieter:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, mieter.encode("latin-1", "replace").decode("latin-1"), 0, 1)
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Vermieter:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0, 6, vermieter.encode("latin-1", "replace").decode("latin-1"), 0, 1
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Mietbeginn:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            mietbeginn.encode("latin-1", "replace").decode("latin-1")
+            if mietbeginn
+            else "-",
+            0,
+            1,
+        )
+
+        if protokoll_typ == "Wohnungsabnahmeprotokoll" and mietende:
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Mietende:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                mietende.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Datum der Begehung:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, datum.strftime("%d.%m.%Y"), 0, 1)
+
+        if protokoll_typ == "Wohnungsabnahmeprotokoll" and neue_adresse_mieter:
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Neue Anschrift Mieter:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                neue_adresse_mieter.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 2. Kaution & Schlüssel
+        pdf.chapter_title("2. Kaution & Schlüssel")
+        pdf.set_font("helvetica", size=10)
+        pdf.set_text_color(51, 65, 85)
+
+        if protokoll_typ == "Wohnungsübergabeprotokoll":
+            pdf.cell(45, 6, "Kautionssumme:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                f"{kaution_betrag:.2f} EUR  ({kaution_status})"
+                .encode("latin-1", "replace")
+                .decode("latin-1"),
+                0,
+                1,
+            )
+
+            if kaution_status == "Ratenzahlung":
+                pdf.set_font("helvetica", size=10)
+                pdf.cell(45, 6, "Ratenvereinbarung:", 0, 0)
+                pdf.set_font("helvetica", "B", 10)
+                raten_info = f"{kaution_raten_anzahl} Raten"
+                if kaution_raten_notiz:
+                    raten_info += f" ({kaution_raten_notiz})"
+                pdf.cell(
+                    0,
+                    6,
+                    raten_info.encode("latin-1", "replace").decode("latin-1"),
+                    0,
+                    1,
+                )
+        else:
+            grund_text = (
+                kaution_einbehalt.encode("latin-1", "replace").decode("latin-1")
+                if kaution_einbehalt
+                else "Keine Angabe"
+            )
+            pdf.cell(45, 6, "Kautions-Einbehalt:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(0, 6, f"{kaution_einbehalt_betrag:.2f} EUR", 0, 1)
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Grund:", 0, 0)
+            pdf.set_font("helvetica", "I", 10)
+            pdf.cell(0, 6, grund_text, 0, 1)
+
+        pdf.ln(2)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, "Übergebene Schlüssel:", 0, 1)
+        pdf.set_font("helvetica", size=10)
+        if s_wohnung > 0:
+            pdf.cell(0, 5, f"  - Wohnungsschlüssel: {s_wohnung} Stk.", 0, 1)
+        if s_haustür > 0:
+            pdf.cell(0, 5, f"  - Haustürschlüssel: {s_haustür} Stk.", 0, 1)
+        if s_zimmer > 0:
+            pdf.cell(0, 5, f"  - Zimmerschlüssel: {s_zimmer} Stk.", 0, 1)
+        if s_briefkasten > 0:
+            pdf.cell(0, 5, f"  - Briefkastenschlüssel: {s_briefkasten} Stk.", 0, 1)
+        if s_keller > 0:
+            pdf.cell(0, 5, f"  - Kellerschlüssel: {s_keller} Stk.", 0, 1)
+
+        for item in st.session_state.weitere_schluessel:
+            pdf.cell(
+                0,
+                5,
+                f"  - {item['bezeichnung'].encode('latin-1', 'replace').decode('latin-1')}: {item['anzahl']} Stk.",
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 3. Zählerstände
+        pdf.chapter_title("3. Zählerstände")
+        pdf.set_font("helvetica", size=10)
+        for z in zaehler_daten:
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(30, 6, f"{z['typ']}:", 0, 0)
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(70, 6, f"{z['bezeichnung']} (Nr: {z['nummer']})", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                f"Stand: {z['stand']:.3f} {z['einheit']}"
+                .encode("latin-1", "replace")
+                .decode("latin-1"),
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 4. Zustand der Räume & Fotos
+        pdf.chapter_title("4. Zustand der Räume und Beweisfotos")
+
+        temp_files = []
+
+        for raum, daten in zustaende.items():
+            pdf.set_font("helvetica", "B", 10)
+            pdf.set_text_color(30, 41, 59)
+            pdf.cell(40, 6, f"- {raum}:", 0, 0)
+
+            pdf.set_font("helvetica", "B", 10)
+            if daten["zustand"] == "Einwandfrei":
+                pdf.set_text_color(16, 185, 129)
+            elif daten["zustand"] == "Leichte Mängel":
+                pdf.set_text_color(217, 119, 6)
+            else:
+                pdf.set_text_color(220, 38, 38)
+
+            pdf.cell(0, 6, daten["zustand"], 0, 1)
+            pdf.set_text_color(51, 65, 85)
+
+            pdf.set_font("helvetica", size=9)
+            pdf.cell(10, 5, "", 0, 0)
+            boden_text = f"Boden: {daten['boden_belag'] if daten['boden_belag'] else 'Keine Angabe'} ({daten['boden_zustand']})"
+            waende_text = f"Wände/Decken: {daten['waende_dechen']} | Dübellöcher: {daten['duebelloecher']}"
+            pdf.cell(
+                0,
+                5,
+                boden_text.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+            pdf.cell(10, 5, "", 0, 0)
+            pdf.cell(
+                0,
+                5,
+                waende_text.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+            if daten["fliesen_gerissen_ja"]:
+                pdf.cell(10, 5, "", 0, 0)
+                fliesen_riss_str = (
+                    f"Fliesen-Risse: Ja, Anzahl: {daten['fliesen_anzahl_risse']}"
+                )
+                pdf.set_text_color(220, 38, 38)
+                pdf.cell(
+                    0,
+                    5,
+                    fliesen_riss_str.encode("latin-1", "replace").decode(
+                        "latin-1"
+                    ),
+                    0,
+                    1,
+                )
+                pdf.set_text_color(51, 65, 85)
+
+            if daten["schadstellen_ja"]:
+                pdf.cell(10, 5, "", 0, 0)
+                schad_str = f"Schadstelle: {daten['schadstellen_beschr']} (Größe: {daten['schadstellen_gr']})"
+                pdf.set_text_color(220, 38, 38)
+                pdf.cell(
+                    0,
+                    5,
+                    schad_str.encode("latin-1", "replace").decode("latin-1"),
+                    0,
+                    1,
+                )
+                pdf.set_text_color(51, 65, 85)
+
+            if daten["kommentar"]:
+                pdf.set_font("helvetica", "I", 9)
+                pdf.cell(10, 5, "", 0, 0)
+                pdf.multi_cell(
+                    0,
+                    5,
+                    f"Bemerkung: {daten['kommentar'].encode('latin-1', 'replace').decode('latin-1')}",
+                )
+
+            if daten["fotos"]:
+                pdf.ln(2)
+                start_x = 22
+                start_y = pdf.get_y()
+                img_width = 70
+                img_gap = 6
+                max_height_in_row = 0
+
+                for idx, foto in enumerate(daten["fotos"]):
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".jpg"
+                    ) as tmp_img:
+                        tmp_img.write(foto.getbuffer())
+                        tmp_img_path = tmp_img.name
+                        temp_files.append(tmp_img_path)
+
+                    if idx > 0 and idx % 2 == 0:
+                        start_y += max_height_in_row + 4
+                        start_x = 22
+                        max_height_in_row = 0
+
+                    try:
+                        with Image.open(tmp_img_path) as pil_img:
+                            w_orig, h_orig = pil_img.size
+                            calc_height = (img_width / w_orig) * h_orig
+                            if calc_height > max_height_in_row:
+                                max_height_in_row = calc_height
+                    except Exception:
+                        calc_height = 50
+
+                    if start_y + calc_height > 265:
+                        pdf.add_page()
+                        start_y = pdf.get_y() + 5
+                        start_x = 22
+
+                    try:
+                        current_x = start_x + ((idx % 2) * (img_width + img_gap))
+                        pdf.image(tmp_img_path, x=current_x, y=start_y, w=img_width)
+                    except Exception:
+                        pass
+
+                    pdf.set_y(start_y + max_height_in_row + 5)
+
+            pdf.ln(3)
+
+        # 5. Sonstige Bemerkungen
+        pdf.chapter_title("5. Sonstige Bemerkungen")
+        pdf.set_font("helvetica", size=10)
+        if sonstige_bemerkungen:
+            pdf.multi_cell(
+                0,
+                5,
+                sonstige_bemerkungen.encode("latin-1", "replace").decode(
+                    "latin-1"
+                ),
+            )
+        else:
+            pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
+        pdf.ln(4)
+
+        # 6. Unterschriften im PDF
+        pdf.chapter_title("6. Unterschriften")
+        pdf.ln(2)
+
+        sig_y = pdf.get_y()
+        if sig_y > 230:
+            pdf.add_page()
+            sig_y = pdf.get_y()
+
+        # Canvas-Daten konvertieren & einbetten falls vorhanden
+        if canvas_vermieter.image_data is not None:
+            v_img = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
+            v_bg = Image.new("RGB", v_img.size, (255, 255, 255))
+            v_bg.paste(v_img, mask=v_img.split()[3])
+            v_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+            v_bg.save(v_path)
+            temp_files.append(v_path)
+            pdf.image(v_path, x=15, y=sig_y, w=80)
+
+        if canvas_mieter.image_data is not None:
+            m_img = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
+            m_bg = Image.new("RGB", m_img.size, (255, 255, 255))
+            m_bg.paste(m_img, mask=m_img.split()[3])
+            m_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+            m_bg.save(m_path)
+            temp_files.append(m_path)
+            pdf.image(m_path, x=115, y=sig_y, w=80)
+
+        pdf.set_y(sig_y + 25)
+        pdf.set_font("helvetica", "", 9)
+        pdf.cell(90, 5, "________________________________________", 0, 0, "L")
+        pdf.cell(10, 5, "", 0, 0)
+        pdf.cell(90, 5, "________________________________________", 0, 1, "L")
+
+        pdf.cell(90, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
+        pdf.cell(10, 5, "", 0, 0)
+        pdf.cell(90, 5, "Mieter", 0, 1, "L")
+
+        # PDF temporär speichern & Download bereitstellen
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            pdf.output(tmp_pdf.name)
+            pdf_path = tmp_pdf.name
+
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
         st.download_button(
-            label="📥 Wohnungsabnahmeprotokoll Herunterladen",
-            data=buffer,
-            file_name=f"Wohnungsabnahmeprotokoll_{d['objekt_adresse'].replace(' ', '_')}.pdf",
-            mime="application/pdf"
+            label="📥 PDF-Protokoll herunterladen",
+            data=pdf_bytes,
+            file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
         )
+
+        # Aufräumen der temporären Bilddateien
+        for tf in temp_files:
+            try:
+                os.remove(tf)
+            except Exception:
+                pass
