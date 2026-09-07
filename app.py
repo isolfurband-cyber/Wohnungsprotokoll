@@ -9,7 +9,7 @@ from streamlit_drawable_canvas import st_canvas
 
 # 1. Seitenkonfiguration
 st.set_page_config(
-    page_title="Zähler- & Übergabeprotokoll", page_icon="⚡", layout="centered"
+    page_title="Zählerprotokoll", page_icon="⚡", layout="centered"
 )
 
 # 2. Modernes CSS Styling einfügen
@@ -75,7 +75,7 @@ class ModernPDF(FPDF):
                 self.ln(38)
             else:
                 self.set_font("helvetica", "B", 10)
-                self.cell(0, 5, "KARE-Immobilien Übergabeprotokoll", 0, 1, "L")
+                self.cell(0, 5, "KARE-Immobilien Zählerprotokoll", 0, 1, "L")
                 self.ln(5)
         else:
             self.ln(12)
@@ -114,7 +114,7 @@ else:
         "Hinweis: Die Datei 'kare_logo.png' wurde nicht im App-Ordner gefunden."
     )
     st.markdown(
-        "<h1 style='text-align: center;'>KARE-Immobilien Protokoll</h1>",
+        "<h1 style='text-align: center;'>KARE-Immobilien Zählerprotokoll</h1>",
         unsafe_allow_html=True,
     )
 
@@ -125,7 +125,7 @@ with st.container(border=True):
     st.subheader("Art des Protokolls")
     protokoll_typ = st.radio(
         "Wähle die Art des Protokolls:",
-        ["Zähler- & Übergabeprotokoll", "Zähler- & Abnahmeprotokoll"],
+        ["Zählerübergabeprotokoll", "Zählerabnahmeprotokoll"],
         horizontal=True,
         label_visibility="collapsed",
     )
@@ -143,7 +143,7 @@ with st.container(border=True):
         )
 
         mietende = ""
-        if "Abnahmeprotokoll" in protokoll_typ:
+        if protokoll_typ == "Zählerabnahmeprotokoll":
             mietende = st.text_input(
                 "Mietende", placeholder="TT.MM.JJJJ", key="mietende_text"
             )
@@ -155,82 +155,21 @@ with st.container(border=True):
             "Wohnfläche (m²)", value=0.0, format="%.2f", step=1.0
         )
         datum = st.date_input(
-            "Datum der Begehung",
+            "Datum der Ablesung",
             format="DD.MM.YYYY",
             key="begehung_datum",
         )
 
-# --- ABSCHNITT 2: RÄUME & ZUSTAND ---
+# --- ABSCHNITT 2: KAUTION & SCHLÜSSEL ---
 with st.container(border=True):
-    st.subheader("2. Zustand der Räume & Fotos")
-    st.write("Erfasse hier den Zustand, Mängel und optional Fotos pro Raum.")
-
-    if "raeume_liste" not in st.session_state:
-        st.session_state.raeume_liste = [
-            "Wohnzimmer",
-            "Schlafzimmer",
-            "Küche",
-            "Bad",
-            "Flur",
-            "Kinderzimmer",
-        ]
-
-    raeume_daten = []
-    
-    for raum in st.session_state.raeume_liste:
-        st.markdown(f"**{raum}**")
-        col_r1, col_r2 = st.columns([1, 2])
-        with col_r1:
-            zustand = st.selectbox(
-                "Zustand",
-                ["Einwandfrei", "Gebraucht / OK", "Mängel vorhanden"],
-                key=f"zustand_{raum}",
-                label_visibility="collapsed"
-            )
-        with col_r2:
-            maengel = st.text_input(
-                "Mängel / Bemerkungen",
-                placeholder="z.B. Wand beschädigt, Kratzer im Boden...",
-                key=f"maengel_{raum}",
-                label_visibility="collapsed"
-            )
-        
-        # Foto-Upload für den jeweiligen Raum
-        raum_foto = st.file_uploader(
-            f"Foto für {raum} hochladen (optional)",
-            type=["png", "jpg", "jpeg"],
-            key=f"foto_{raum}"
-        )
-        
-        if raum_foto is not None:
-            st.image(raum_foto, caption=f"Vorschau: {raum}", width=200)
-
-        raeume_daten.append({
-            "raum": raum,
-            "zustand": zustand,
-            "maengel": maengel,
-            "foto": raum_foto
-        })
-        st.divider()
-
-    # Option, eigene Räume hinzuzufügen
-    with st.expander("Weiteren Raum hinzufügen"):
-        neuer_raum = st.text_input("Raumbezeichnung (z.B. Gäste-WC, Keller)")
-        if st.button("Raum hinzufügen", key="btn_add_raum"):
-            if neuer_raum and neuer_raum not in st.session_state.raeume_liste:
-                st.session_state.raeume_liste.append(neuer_raum)
-                st.rerun()
-
-# --- ABSCHNITT 3: KAUTION & SCHLÜSSEL ---
-with st.container(border=True):
-    st.subheader("3. Kaution & Schlüssel")
+    st.subheader("2. Kaution & Schlüssel")
 
     kaution_betrag = 0.0
     kaution_status = ""
     kaution_einbehalt = ""
     kaution_einbehalt_betrag = 0.0
 
-    if "Übergabeprotokoll" in protokoll_typ:
+    if protokoll_typ == "Zählerübergabeprotokoll":
         col_k1, col_k2 = st.columns(2)
         with col_k1:
             kaution_betrag = st.number_input(
@@ -307,9 +246,9 @@ with st.container(border=True):
                     st.session_state.weitere_schluessel.pop(idx)
                     st.rerun()
 
-# --- ABSCHNITT 4: ZÄHLERSTÄNDE ---
+# --- ABSCHNITT 3: ZÄHLERSTÄNDE ---
 with st.container(border=True):
-    st.subheader("4. Zählerstände")
+    st.subheader("3. Zählerstände")
 
     if "zaehler_liste" not in st.session_state:
         st.session_state.zaehler_liste = [
@@ -378,19 +317,19 @@ with st.container(border=True):
         })
         st.write("")
 
-# --- ABSCHNITT 5: BEMERKUNGEN ---
+# --- ABSCHNITT 4: BEMERKUNGEN ---
 with st.container(border=True):
-    st.subheader("5. Sonstige Bemerkungen")
+    st.subheader("4. Sonstige Bemerkungen")
     sonstige_bemerkungen = st.text_area(
         "Zusätzliche Vereinbarungen oder Bemerkungen",
-        placeholder="z.B. Vereinbarungen zu Schönheitsreparaturen...",
+        placeholder="z.B. Vereinbarungen zu Zählerständen...",
         label_visibility="collapsed",
         height=100,
     )
 
-# --- ABSCHNITT 6: UNTERSCHRIFTEN ---
+# --- ABSCHNITT 5: UNTERSCHRIFTEN ---
 with st.container(border=True):
-    st.subheader("6. Unterschriften")
+    st.subheader("5. Unterschriften")
     st.write(
         "Bitte unterschreiben Sie mit dem Finger oder einem Stift direkt im Feld."
     )
@@ -503,7 +442,7 @@ if st.button(
             1,
         )
 
-        if "Abnahmeprotokoll" in protokoll_typ and mietende:
+        if protokoll_typ == "Zählerabnahmeprotokoll" and mietende:
             pdf.set_font("helvetica", size=10)
             pdf.cell(45, 6, "Mietende:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
@@ -516,49 +455,17 @@ if st.button(
             )
 
         pdf.set_font("helvetica", size=10)
-        pdf.cell(45, 6, "Datum der Begehung:", 0, 0)
+        pdf.cell(45, 6, "Datum der Ablesung:", 0, 0)
         pdf.set_font("helvetica", "B", 10)
         pdf.cell(0, 6, datum.strftime("%d.%m.%Y"), 0, 1)
         pdf.ln(4)
 
-        # 2. Zustand der Räume & Fotos in PDF einbinden
-        pdf.chapter_title("2. Zustand der Räume")
-        pdf.set_font("helvetica", size=10)
-        
-        for r in raeume_daten:
-            # Sicherheitsprüfung für Seitenumbruch bei vielen Rauminhalten/Fotos
-            if pdf.get_y() > 240:
-                pdf.add_page()
-
-            pdf.set_font("helvetica", "B", 10)
-            pdf.cell(35, 6, f"{r['raum']}:", 0, 0)
-            pdf.set_font("helvetica", "B" if r['zustand'] == "Mängel vorhanden" else "", 10)
-            pdf.cell(45, 6, f"[{r['zustand']}]".encode("latin-1", "replace").decode("latin-1"), 0, 0)
-            pdf.set_font("helvetica", size=9)
-            maengel_str = f"Mängel: {r['maengel']}" if r['maengel'] else "Keine Mängel"
-            pdf.cell(0, 6, maengel_str.encode("latin-1", "replace").decode("latin-1"), 0, 1)
-            
-            # Falls ein Foto hochgeladen wurde, direkt ins PDF einfügen
-            if r['foto'] is not None:
-                try:
-                    img_temp = Image.open(r['foto']).convert("RGB")
-                    tmp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
-                    img_temp.save(tmp_img_path)
-                    
-                    pdf.ln(2)
-                    pdf.image(tmp_img_path, x=20, w=60) # Bild mit Breite 60 mm einfügen
-                    pdf.ln(4)
-                except Exception:
-                    pass
-            pdf.ln(2)
-        pdf.ln(2)
-
-        # 3. Kaution & Schlüssel
-        pdf.chapter_title("3. Kaution & Schlüssel")
+        # 2. Kaution & Schlüssel
+        pdf.chapter_title("2. Kaution & Schlüssel")
         pdf.set_font("helvetica", size=10)
         pdf.set_text_color(51, 65, 85)
 
-        if "Übergabeprotokoll" in protokoll_typ:
+        if protokoll_typ == "Zählerübergabeprotokoll":
             pdf.cell(45, 6, "Kautionssumme:", 0, 0)
             pdf.set_font("helvetica", "B", 10)
             pdf.cell(
@@ -609,8 +516,8 @@ if st.button(
             )
         pdf.ln(4)
 
-        # 4. Zählerstände
-        pdf.chapter_title("4. Zählerstände")
+        # 3. Zählerstände
+        pdf.chapter_title("3. Zählerstände")
         pdf.set_font("helvetica", size=10)
         for z in zaehler_daten:
             pdf.set_font("helvetica", "B", 10)
@@ -629,8 +536,8 @@ if st.button(
             )
         pdf.ln(4)
 
-        # 5. Sonstige Bemerkungen
-        pdf.chapter_title("5. Sonstige Bemerkungen")
+        # 4. Sonstige Bemerkungen
+        pdf.chapter_title("4. Sonstige Bemerkungen")
         pdf.set_font("helvetica", size=10)
         if sonstige_bemerkungen:
             pdf.multi_cell(
@@ -640,52 +547,44 @@ if st.button(
             )
         else:
             pdf.cell(0, 5, "Keine", 0, 1)
-        pdf.ln(6)
+        pdf.ln(10)
 
-        # Sicherheitsprüfung: Prüfen, ob für die Unterschriften am Ende der Seite noch genug Platz ist (ca. 45 mm)
-        if pdf.get_y() > 235:
-            pdf.add_page()
-
-        # 6. Unterschriften (Sauber und kontrolliert platziert)
-        pdf.chapter_title("6. Unterschriften")
+        # 5. Unterschriften (Bilder einbetten)
+        pdf.chapter_title("5. Unterschriften")
         pdf.ln(2)
 
         sig_y = pdf.get_y()
         
-        # Vermieter-Unterschrift (Bild direkt über der Linie einfügen)
-        if canvas_vermieter.image_data is not None and len(canvas_vermieter.image_data) > 0:
+        # Vermieter-Unterschrift zwischenspeichern und einfügen
+        if canvas_vermieter.image_data is not None:
             img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
-            if np.any(np.array(img_v.split()[3]) > 0):
-                background = Image.new("RGB", img_v.size, (255, 255, 255))
-                background.paste(img_v, mask=img_v.split()[3])
-                tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                background.save(tmp_v.name)
-                pdf.image(tmp_v.name, x=20, y=sig_y + 2, w=75, h=22)
+            background = Image.new("RGB", img_v.size, (255, 255, 255))
+            background.paste(img_v, mask=img_v.split()[3])
+            tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            background.save(tmp_v.name)
+            pdf.image(tmp_v.name, x=20, y=sig_y, w=75)
 
-        # Mieter-Unterschrift (Bild direkt über der Linie einfügen)
-        if canvas_mieter.image_data is not None and len(canvas_mieter.image_data) > 0:
+        # Mieter-Unterschrift zwischenspeichern und einfügen
+        if canvas_mieter.image_data is not None:
             img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
-            if np.any(np.array(img_m.split()[3]) > 0):
-                background_m = Image.new("RGB", img_m.size, (255, 255, 255))
-                background_m.paste(img_m, mask=img_m.split()[3])
-                tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                background_m.save(tmp_m.name)
-                pdf.image(tmp_m.name, x=115, y=sig_y + 2, w=75, h=22)
+            background_m = Image.new("RGB", img_m.size, (255, 255, 255))
+            background_m.paste(img_m, mask=img_m.split()[3])
+            tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            background_m.save(tmp_m.name)
+            pdf.image(tmp_m.name, x=115, y=sig_y, w=75)
 
-        # Feste Linien und Beschriftungen zeichnen
-        pdf.set_y(sig_y + 24)
+        pdf.set_y(sig_y + 35)
         pdf.cell(95, 5, "_" * 35, 0, 0, "L")
         pdf.cell(95, 5, "_" * 35, 0, 1, "L")
-        pdf.set_font("helvetica", "B", 9)
         pdf.cell(95, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
         pdf.cell(95, 5, "Mieter", 0, 1, "L")
 
-        # PDF Ausgabe für Download bereitstellen
+        # PDF Ausgabe für Download bereitstellen (modernes fpdf2 gibt direkt bytearray/bytes zurück)
         pdf_output = bytes(pdf.output())
         st.download_button(
             label="PDF herunterladen",
             data=pdf_output,
-            file_name=f"Uebergabeprotokoll_{mieter.replace(' ', '_')}.pdf",
+            file_name=f"Zaehlerprotokoll_{mieter.replace(' ', '_')}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
