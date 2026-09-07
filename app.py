@@ -878,65 +878,50 @@ if st.button(
 
     sig_y = pdf.get_y()
 
-    # Sichere Abfrage für Vermieter-Unterschrift
-    if (
-        canvas_vermieter.json_data is not None
-        and "objects" in canvas_vermieter.json_data
-        and len(canvas_vermieter.json_data["objects"]) > 0
-    ):
+
+    # Robuste Funktion zur Prüfung und Verarbeitung der Unterschrift
+    def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
       try:
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".png"
-        ) as tmp_sig1:
-          img_data = canvas_vermieter.image_data.astype(np.uint8)
+        if canvas_result.image_data is not None:
+          img_data = canvas_result.image_data.astype(np.uint8)
           img = Image.fromarray(img_data).convert("RGBA")
 
-          datas = img.getdata()
-          new_data = []
-          for item in datas:
-            if item[0] > 235 and item[1] > 235 and item[2] > 235:
-              new_data.append((255, 255, 255, 0))
-            else:
-              new_data.append(item)
-          img.putdata(new_data)
+          # Prüfen, ob gezeichnet wurde (Abgleich mit Hintergrund #f0f2f6)
+          arr = np.array(img)
+          bg_color = np.array([240, 242, 246, 255], dtype=np.uint8)
+          diff = np.abs(arr.astype(int) - bg_color.astype(int))
 
-          img.save(tmp_sig1.name, "PNG")
-          tmp_sig1_path = tmp_sig1.name
-          temp_files.append(tmp_sig1_path)
+          if np.any(diff > 20):
+            datas = img.getdata()
+            new_data = []
+            for item in datas:
+              if (
+                  abs(item[0] - 240) < 15
+                  and abs(item[1] - 242) < 15
+                  and abs(item[2] - 246) < 15
+              ):
+                new_data.append((255, 255, 255, 0))
+              else:
+                new_data.append(item)
+            img.putdata(new_data)
 
-        pdf.image(tmp_sig1_path, x=15, y=sig_y, w=75)
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".png"
+            ) as tmp_sig:
+              img.save(tmp_sig.name, "PNG")
+              tmp_sig_path = tmp_sig.name
+              temp_files.append(tmp_sig_path)
+
+            pdf_obj.image(tmp_sig_path, x=x_pos, y=y_pos, w=width)
       except Exception:
         pass
 
-    # Sichere Abfrage für Mieter-Unterschrift
-    if (
-        canvas_mieter.json_data is not None
-        and "objects" in canvas_mieter.json_data
-        and len(canvas_mieter.json_data["objects"]) > 0
-    ):
-      try:
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".png"
-        ) as tmp_sig2:
-          img_data = canvas_mieter.image_data.astype(np.uint8)
-          img = Image.fromarray(img_data).convert("RGBA")
 
-          datas = img.getdata()
-          new_data = []
-          for item in datas:
-            if item[0] > 235 and item[1] > 235 and item[2] > 235:
-              new_data.append((255, 255, 255, 0))
-            else:
-              new_data.append(item)
-          img.putdata(new_data)
+    # Vermieter-Unterschrift einfügen
+    process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
 
-          img.save(tmp_sig2.name, "PNG")
-          tmp_sig2_path = tmp_sig2.name
-          temp_files.append(tmp_sig2_path)
-
-        pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
-      except Exception:
-        pass
+    # Mieter-Unterschrift einfügen
+    process_signature(canvas_mieter, pdf, 115, sig_y, 75)
 
     pdf.ln(24)
     pdf.set_font("helvetica", "B", 9)
