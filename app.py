@@ -18,8 +18,7 @@ st.set_page_config(
 class ModernPDF(FPDF):
 
     def header(self):
-        # Header (KARE-Immobilien Branding)
-        self.set_fill_color(15, 23, 42)  # Dunkelblau / Slate
+        self.set_fill_color(15, 23, 42)
         self.rect(0, 0, 210, 25, "F")
 
         self.set_font("helvetica", "B", 12)
@@ -84,65 +83,80 @@ protokoll_typ = st.selectbox(
 if "weitere_schluessel" not in st.session_state:
     st.session_state.weitere_schluessel = []
 
+default_zaehler = [
+    {
+        "typ": "Strom",
+        "bezeichnung": "Hauptzähler",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "kWh",
+    },
+    {
+        "typ": "Kaltwasser",
+        "bezeichnung": "Wohnung",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "m³",
+    },
+    {
+        "typ": "Warmwasser",
+        "bezeichnung": "Wohnung",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "m³",
+    },
+    {
+        "typ": "Heizung",
+        "bezeichnung": "Wohnzimmer",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "Units",
+    },
+    {
+        "typ": "Heizung",
+        "bezeichnung": "Kinderzimmer",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "Units",
+    },
+    {
+        "typ": "Heizung",
+        "bezeichnung": "Flur",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "Units",
+    },
+    {
+        "typ": "Heizung",
+        "bezeichnung": "Bad",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "Units",
+    },
+    {
+        "typ": "Heizung",
+        "bezeichnung": "Küche",
+        "nummer": "",
+        "stand": 0.0,
+        "einheit": "Units",
+    },
+]
+
 if "zaehler_liste" not in st.session_state:
-    st.session_state.zaehler_liste = [
-        {
-            "typ": "Strom",
-            "bezeichnung": "Hauptzähler",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "kWh",
-        },
-        {
-            "typ": "Kaltwasser",
-            "bezeichnung": "Wohnung",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "m³",
-        },
-        {
-            "typ": "Warmwasser",
-            "bezeichnung": "Wohnung",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "m³",
-        },
-        {
-            "typ": "Heizung",
-            "bezeichnung": "Wohnzimmer",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "Units",
-        },
-        {
-            "typ": "Heizung",
-            "bezeichnung": "Kinderzimmer",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "Units",
-        },
-        {
-            "typ": "Heizung",
-            "bezeichnung": "Flur",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "Units",
-        },
-        {
-            "typ": "Heizung",
-            "bezeichnung": "Bad",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "Units",
-        },
-        {
-            "typ": "Heizung",
-            "bezeichnung": "Küche",
-            "nummer": "",
-            "stand": 0.0,
-            "einheit": "Units",
-        },
-    ]
+    st.session_state.zaehler_liste = default_zaehler
+else:
+    # Falls alte Sitzungsdaten im Cache liegen, fehlende Keys ergänzen
+    for z in st.session_state.zaehler_liste:
+        if "nummer" not in z:
+            z["nummer"] = ""
+        if "stand" not in z:
+            z["stand"] = 0.0
+        if "typ" not in z:
+            z["typ"] = "Strom"
+        if "bezeichnung" not in z:
+            z["bezeichnung"] = ""
+        if "einheit" not in z:
+            z["einheit"] = "Stk."
 
 # --- ABSCHNITT 1: STAMMDATEN ---
 with st.container():
@@ -237,7 +251,6 @@ with st.container():
     with c_s5:
         s_keller = st.number_input("Keller", min_value=0, value=1)
 
-    # Weitere individuelle Schlüssel hinzufügen
     st.write("**Weitere Schlüssel / Transponder:**")
     for idx, item in enumerate(st.session_state.weitere_schluessel):
         col_del1, col_del2 = st.columns([4, 1])
@@ -284,27 +297,32 @@ with st.container():
             z_typ = st.selectbox(
                 "Art",
                 ["Strom", "Kaltwasser", "Warmwasser", "Heizung", "Gas"],
-                index=[
-                    "Strom",
-                    "Kaltwasser",
-                    "Warmwasser",
-                    "Heizung",
-                    "Gas",
-                ].index(z["typ"]),
+                index=(
+                    [
+                        "Strom",
+                        "Kaltwasser",
+                        "Warmwasser",
+                        "Heizung",
+                        "Gas",
+                    ].index(z.get("typ", "Strom"))
+                    if z.get("typ", "Strom")
+                    in ["Strom", "Kaltwasser", "Warmwasser", "Heizung", "Gas"]
+                    else 0
+                ),
                 key=f"zt_{idx}",
             )
         with col_z2:
             z_bez = st.text_input(
-                "Ort / Bezeichnung", value=z["bezeichnung"], key=f"zb_{idx}"
+                "Ort / Bezeichnung", value=z.get("bezeichnung", ""), key=f"zb_{idx}"
             )
         with col_z3:
             z_nr = st.text_input(
-                "Zählernummer", value=z["nummer"], key=f"zn_{idx}"
+                "Zählernummer", value=z.get("nummer", ""), key=f"zn_{idx}"
             )
         with col_z4:
             z_stand = st.number_input(
-                f"Stand ({z['einheit']})",
-                value=float(z["stand"]),
+                f"Stand ({z.get('einheit', 'Units')})",
+                value=float(z.get("stand", 0.0)),
                 format="%.3f",
                 key=f"zs_{idx}",
             )
@@ -315,7 +333,7 @@ with st.container():
                 "bezeichnung": z_bez,
                 "nummer": z_nr,
                 "stand": z_stand,
-                "einheit": z["einheit"],
+                "einheit": z.get("einheit", "Units"),
             }
         )
 
@@ -372,7 +390,6 @@ with st.container():
                     key=f"duebel_{raum}",
                 )
 
-            # Optionale Mängel-Details
             col_m1, col_m2 = st.columns(2)
             with col_m1:
                 fliesen_gerissen_ja = st.checkbox(
@@ -806,7 +823,6 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        # Unterschrift Vermieter verarbeiten
         if canvas_vermieter.image_data is not None:
             img_v = Image.fromarray(
                 canvas_vermieter.image_data.astype("uint8"), mode="RGBA"
@@ -821,7 +837,6 @@ if st.button(
                 temp_files.append(tmp_sig_v.name)
                 pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
 
-        # Unterschrift Mieter verarbeiten
         if canvas_mieter.image_data is not None:
             img_m = Image.fromarray(
                 canvas_mieter.image_data.astype("uint8"), mode="RGBA"
@@ -871,7 +886,6 @@ if st.button(
             "L",
         )
 
-        # PDF im Speicher ausgeben und Download-Button anbieten
         pdf_output = pdf.output(dest="S").encode("latin1")
 
         st.download_button(
@@ -881,7 +895,6 @@ if st.button(
             mime="application/pdf",
         )
 
-        # Temporäre Dateien aufräumen
         for tf in temp_files:
             try:
                 os.remove(tf)
