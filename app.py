@@ -863,34 +863,45 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(4)
+        pdf.ln(12)
 
         sig_y = pdf.get_y()
+
 
         def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
             if isinstance(canvas_result, dict) and "image_data" in canvas_result:
                 img_data = canvas_result["image_data"]
-                if img_data is not None and np.any(img_data > 0):
+                if img_data is not None:
                     img_array = img_data.astype("uint8")
                     pil_img = Image.fromarray(img_array, mode="RGBA")
+                    extrema = pil_img.getextrema()
+                    if extrema:
+                        background = Image.new(
+                            "RGB", pil_img.size, (255, 255, 255)
+                        )
+                        background.paste(pil_img, mask=pil_img.split()[3])
 
-                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                    background.paste(pil_img, mask=pil_img.split()[3])
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=".png"
+                        ) as tmp:
+                            background.save(tmp.name, "PNG")
+                            tmp_path = tmp.name
+                            temp_files.append(tmp_path)
 
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png"
-                    ) as tmp:
-                        background.save(tmp.name, "PNG")
-                        tmp_path = tmp.name
-                        temp_files.append(tmp_path)
+                        w_orig, h_orig = background.size
+                        if w_orig > 0:
+                            height = (width / w_orig) * h_orig
+                            pdf_obj.image(
+                                tmp_path,
+                                x=x_pos,
+                                y=y_pos - height + 4,
+                                w=width,
+                                h=height,
+                            )
 
-                    w_orig, h_orig = background.size
-                    height = (width / w_orig) * h_orig
 
-                    pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
-
-        process_signature(canvas_vermieter, pdf, 15, sig_y - 12, 75)
-        process_signature(canvas_mieter, pdf, 115, sig_y - 12, 75)
+        process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
+        process_signature(canvas_mieter, pdf, 115, sig_y, 75)
 
         pdf.set_y(sig_y + 8)
         pdf.set_font("helvetica", "B", 9)
@@ -898,10 +909,14 @@ if st.button(
         pdf.cell(95, 5, "________________________________________", 0, 0)
         pdf.cell(95, 5, "________________________________________", 0, 1)
         pdf.set_font("helvetica", size=9)
-        pdf.cell(95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0)
+        pdf.cell(
+            95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0
+        )
         pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".pdf"
+        ) as tmp_file:
             pdf.output(tmp_file.name)
             with open(tmp_file.name, "rb") as f:
                 pdf_bytes = f.read()
