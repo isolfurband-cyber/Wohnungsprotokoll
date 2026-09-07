@@ -476,7 +476,7 @@ with st.container():
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag":boden_belag,
+                "boden_belag": boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -509,10 +509,10 @@ with st.container():
     with col_sig1:
         st.write("**Vermieter (KARE)**")
         canvas_vermieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 1)",
+            fill_color="#ffffff",
             stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="#ffffff",
             update_streamlit=True,
             height=150,
             width=280,
@@ -523,10 +523,10 @@ with st.container():
     with col_sig2:
         st.write("**Mieter**")
         canvas_mieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 1)",
+            fill_color="#ffffff",
             stroke_width=3,
             stroke_color="#000000",
-            background_color="#FFFFFF",
+            background_color="#ffffff",
             update_streamlit=True,
             height=150,
             width=280,
@@ -877,27 +877,27 @@ if st.button(
                 img_data = canvas_result["image_data"]
                 if img_data is not None and img_data.size > 0:
                     img_array = img_data.astype("uint8")
-                    pil_img = Image.fromarray(img_array, mode="RGBA")
                     
-                    # Weißer Hintergrund statt Transparenz
-                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                    background.paste(pil_img, (0, 0), pil_img)
-                    
-                    # Transparente Pixel in Weiß umwandeln, damit kein grauer Kasten entsteht
-                    data = np.array(background)
-                    r, g, b = data[:,:,0], data[:,:,1], data[:,:,2]
-                    white_areas = (r > 240) & (g > 240) & (b > 240)
-                    data[white_areas] = [255, 255, 255]
-                    final_img = Image.fromarray(data)
+                    # Prüfen ob im Canvas überhaupt gezeichnet wurde (nicht nur leerer Weißraum)
+                    # Wenn Alpha-Kanal existiert oder alle Pixel weiß sind
+                    if img_array.shape[2] == 4:
+                        # Konvertiere RGBA zu RGB mit weißem Hintergrund
+                        pil_img = Image.fromarray(img_array, mode="RGBA")
+                        background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                        background.paste(pil_img, (0, 0), pil_img)
+                    else:
+                        background = Image.fromarray(img_array, mode="RGB")
 
+                    # Speichere die Unterschrift als temporäres PNG ab
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        final_img.save(tmp.name, "PNG")
+                        background.save(tmp.name, "PNG")
                         tmp_path = tmp.name
                         temp_files.append(tmp_path)
 
-                    w_orig, h_orig = final_img.size
+                    w_orig, h_orig = background.size
                     if w_orig > 0:
                         height = (width / w_orig) * h_orig
+                        # Zeichne das Bild exakt über die Signaturlinie
                         pdf_obj.image(
                             tmp_path,
                             x=x_pos,
