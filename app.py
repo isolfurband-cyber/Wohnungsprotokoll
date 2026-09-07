@@ -500,42 +500,95 @@ with st.container(border=True):
       height=100,
   )
 
-# --- ABSCHNITT 6: UNTERSCHRIFTEN ---
-with st.container(border=True):
-  st.subheader("✍️ 6. Unterschriften")
-  st.write(
-      "Bitte unterschreiben Sie mit dem Finger oder einem Stift direkt im Feld."
-  )
+# 6. Unterschriften
+    if pdf.get_y() > 220:
+      pdf.add_page()
 
-  col_sig1, col_sig2 = st.columns(2)
-
-  with col_sig1:
-    st.write("**Vermieter (KARE)**")
-    canvas_vermieter = st_canvas(
-        fill_color="rgba(255, 255, 255, 0)",
-        stroke_width=3,
-        stroke_color="#000000",
-        background_color="#f0f2f6",
-        height=150,
-        width=280,
-        drawing_mode="freedraw",
-        key="canvas_vermieter",
+    pdf.chapter_title("6. Unterschriften")
+    pdf.set_font("helvetica", size=9)
+    pdf.set_text_color(100, 110, 120)
+    pdf.cell(
+        0,
+        5,
+        (
+            "Mit ihrer Unterschrift bestätigen die Parteien die Richtigkeit der"
+            " oben genannten Angaben."
+        ),
+        0,
+        1,
     )
+    pdf.ln(6)
 
-  with col_sig2:
-    st.write("**Mieter**")
-    canvas_mieter = st_canvas(
-        fill_color="rgba(255, 255, 255, 0)",
-        stroke_width=3,
-        stroke_color="#000000",
-        background_color="#f0f2f6",
-        height=150,
-        width=280,
-        drawing_mode="freedraw",
-        key="canvas_mieter",
-    )
+    sig_y = pdf.get_y()
 
-st.write("")
+    # Sichere Abfrage für Vermieter-Unterschriften
+    if (
+        canvas_vermieter.json_data is not None
+        and "objects" in canvas_vermieter.json_data
+        and len(canvas_vermieter.json_data["objects"]) > 0
+    ):
+      try:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".png"
+        ) as tmp_sig1:
+          img_data = canvas_vermieter.image_data.astype(np.uint8)
+          img = Image.fromarray(img_data).convert("RGBA")
+
+          datas = img.getdata()
+          new_data = []
+          for item in datas:
+            if item[0] > 235 and item[1] > 235 and item[2] > 235:
+              new_data.append((255, 255, 255, 0))
+            else:
+              new_data.append(item)
+          img.putdata(new_data)
+
+          img.save(tmp_sig1.name, "PNG")
+          tmp_sig1_path = tmp_sig1.name
+          temp_files.append(tmp_sig1_path)
+
+        pdf.image(tmp_sig1_path, x=15, y=sig_y, w=75)
+      except Exception:
+        pass
+
+    # Sichere Abfrage für Mieter-Unterschriften
+    if (
+        canvas_mieter.json_data is not None
+        and "objects" in canvas_mieter.json_data
+        and len(canvas_mieter.json_data["objects"]) > 0
+    ):
+      try:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".png"
+        ) as tmp_sig2:
+          img_data = canvas_mieter.image_data.astype(np.uint8)
+          img = Image.fromarray(img_data).convert("RGBA")
+
+          datas = img.getdata()
+          new_data = []
+          for item in datas:
+            if item[0] > 235 and item[1] > 235 and item[2] > 235:
+              new_data.append((255, 255, 255, 0))
+            else:
+              new_data.append(item)
+          img.putdata(new_data)
+
+          img.save(tmp_sig2.name, "PNG")
+          tmp_sig2_path = tmp_sig2.name
+          temp_files.append(tmp_sig2_path)
+
+        pdf.image(tmp_sig2_path, x=115, y=sig_y, w=75)
+      except Exception:
+        pass
+
+    pdf.ln(24)
+    pdf.set_font("helvetica", "B", 9)
+    pdf.set_text_color(51, 65, 85)
+    pdf.cell(95, 5, "________________________________________", 0, 0)
+    pdf.cell(95, 5, "________________________________________", 0, 1)
+    pdf.set_font("helvetica", size=9)
+    pdf.cell(95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0)
+    pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
 
 # --- SPEICHERN BUTTON & PDF GENERIERUNG ---
 if st.button(
