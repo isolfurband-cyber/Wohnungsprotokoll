@@ -113,10 +113,10 @@ else:
     st.warning(
         "⚠️ Hinweis: Die Datei 'kare_logo.png' wurde nicht im App-Ordner gefunden."
     )
-st.markdown(
-    "<h1 style='text-align: center;'>🏠 KARE-Immobilien Protokoll</h1>",
-    unsafe_allow_html=True,
-)
+    st.markdown(
+        "<h1 style='text-align: center;'>🏠 KARE-Immobilien Protokoll</h1>",
+        unsafe_allow_html=True,
+    )
 
 st.write("")
 
@@ -247,7 +247,7 @@ with st.container(border=True):
     with st.expander("➕ Weitere Schlüssel hinzufügen"):
         col_ns1, col_ns2, col_ns3 = st.columns([2, 1, 1])
         with col_ns1:
-            ns_bez = st.text_input("Bezeichnung (z.B. Dachboden, Garage)")
+            ns_bez = st.text_input("Bezeichnung (z.B. Dachboden, Garage)", key="ns_bez_input")
         with col_ns2:
             ns_anzahl = st.number_input(
                 "Anzahl", min_value=1, value=1, step=1, key="ns_anz"
@@ -255,7 +255,7 @@ with st.container(border=True):
         with col_ns3:
             st.write("")
             st.write("")
-            if st.button("Hinzufügen", use_container_width=True):
+            if st.button("Hinzufügen", key="btn_add_schl", use_container_width=True):
                 if ns_bez:
                     st.session_state.weitere_schluessel.append(
                         {"bezeichnung": ns_bez, "anzahl": ns_anzahl}
@@ -445,3 +445,501 @@ with st.container(border=True):
                             "Anzahl gerissener Fliesen",
                             min_value=1,
                             value=1,
+                            step=1,
+                            key=f"fliesen_anz_{raum}",
+                        )
+
+            schadstellen_ja = st.checkbox(
+                "Allgemeine Schadstellen vorhanden", key=f"schad_ja_{raum}"
+            )
+            schadstellen_gr = ""
+            schadstellen_beschr = ""
+            if schadstellen_ja:
+                col_s1, col_s2 = st.columns(2)
+                with col_s1:
+                    schadstellen_gr = st.text_input(
+                        "Größe der Schadstelle",
+                        placeholder="z.B. 5x5 cm",
+                        key=f"schad_gr_{raum}",
+                    )
+                with col_s2:
+                    schadstellen_beschr = st.text_input(
+                        "Beschreibung Schadstelle",
+                        placeholder="z.B. Kratzer, Riss",
+                        key=f"schad_beschr_{raum}",
+                    )
+
+            kommentar = st.text_area(
+                f"Allgemeine Bemerkungen zu {raum}:", key=f"kom_{raum}", height=68
+            )
+
+            fotos = st.file_uploader(
+                f"Beweisfotos für {raum} anhängen (mehrere möglich)",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key=f"foto_{raum}",
+            )
+
+            zustaende[raum] = {
+                "zustand": zustand,
+                "waende_dechen": waende_dechen,
+                "duebelloecher": duebelloecher,
+                "boden_belag": boden_belag,
+                "boden_zustand": boden_zustand,
+                "fliesen_gerissen_ja": fliesen_gerissen_ja,
+                "fliesen_anzahl_risse": fliesen_anzahl_risse,
+                "schadstellen_ja": schadstellen_ja,
+                "schadstellen_gr": schadstellen_gr,
+                "schadstellen_beschr": schadstellen_beschr,
+                "kommentar": kommentar,
+                "fotos": fotos,
+            }
+
+# --- ABSCHNITT 5: BEMERKUNGEN ---
+with st.container(border=True):
+    st.subheader("📝 5. Sonstige Bemerkungen")
+    sonstige_bemerkungen = st.text_area(
+        "Zusätzliche Vereinbarungen oder Bemerkungen",
+        placeholder=(
+            "z.B. Schönheitsreparaturen bis zum 15.04. vereinbart, Küche wird"
+            " übernommen..."
+        ),
+        label_visibility="collapsed",
+        height=100,
+    )
+
+# --- ABSCHNITT 6: UNTERSCHRIFTEN ---
+with st.container(border=True):
+    st.subheader("✍️ 6. Unterschriften")
+    st.write(
+        "Bitte unterschreiben Sie mit dem Finger oder einem Stift direkt im Feld."
+    )
+
+    col_sig1, col_sig2 = st.columns(2)
+
+    with col_sig1:
+        st.write("**Vermieter (KARE)**")
+        canvas_vermieter = st_canvas(
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=3,
+            stroke_color="#000000",
+            background_color="#f0f2f6",
+            height=150,
+            width=280,
+            drawing_mode="freedraw",
+            key="canvas_vermieter",
+        )
+
+    with col_sig2:
+        st.write("**Mieter**")
+        canvas_mieter = st_canvas(
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=3,
+            stroke_color="#000000",
+            background_color="#f0f2f6",
+            height=150,
+            width=280,
+            drawing_mode="freedraw",
+            key="canvas_mieter",
+        )
+
+st.write("")
+
+# --- SPEICHERN BUTTON & PDF GENERIERUNG ---
+if st.button(
+    "📄 Protokoll generieren & herunterladen",
+    type="primary",
+    use_container_width=True,
+):
+    if not wohnung or not mieter:
+        st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
+    else:
+        st.success(
+            "Protokoll wurde erfolgreich erstellt! Der Download startet gleich."
+        )
+        st.balloons()
+
+        # PDF Erstellung starten (ModernPDF Klasse nutzen)
+        pdf = ModernPDF()
+        pdf.add_page()
+        pdf.set_font("helvetica", size=10)
+
+        # Dokumententitel (Groß & Modern)
+        pdf.set_font("helvetica", "B", 15)
+        pdf.set_text_color(15, 23, 42)
+        pdf.cell(0, 8, protokoll_typ.upper(), 0, 1, "C")
+        pdf.ln(5)
+
+        # 1. Stammdaten
+        pdf.chapter_title("1. Stammdaten")
+        pdf.set_font("helvetica", size=10)
+        pdf.set_text_color(51, 65, 85)
+
+        pdf.cell(45, 6, "Objektadresse:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            f"{wohnung.encode('latin-1', 'replace').decode('latin-1')}, {ort.encode('latin-1', 'replace').decode('latin-1')}",
+            0,
+            1,
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Etage / Fläche:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            f"{etage.encode('latin-1', 'replace').decode('latin-1')}  |  {quadratmeter} m²",
+            0,
+            1,
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Mieter:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, mieter.encode("latin-1", "replace").decode("latin-1"), 0, 1)
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Vermieter:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0, 6, vermieter.encode("latin-1", "replace").decode("latin-1"), 0, 1
+        )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Mietbeginn:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(
+            0,
+            6,
+            mietbeginn.encode("latin-1", "replace").decode("latin-1")
+            if mietbeginn
+            else "-",
+            0,
+            1,
+        )
+
+        if protokoll_typ == "Wohnungsabnahmeprotokoll" and mietende:
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Mietende:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                mietende.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+        pdf.set_font("helvetica", size=10)
+        pdf.cell(45, 6, "Datum der Begehung:", 0, 0)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, datum.strftime("%d.%m.%Y"), 0, 1)
+
+        if protokoll_typ == "Wohnungsabnahmeprotokoll" and neue_adresse_mieter:
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Neue Anschrift Mieter:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                neue_adresse_mieter.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 2. Kaution & Schlüssel
+        pdf.chapter_title("2. Kaution & Schlüssel")
+        pdf.set_font("helvetica", size=10)
+        pdf.set_text_color(51, 65, 85)
+
+        if protokoll_typ == "Wohnungsübergabeprotokoll":
+            pdf.cell(45, 6, "Kautionssumme:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                f"{kaution_betrag:.2f} EUR  ({kaution_status})"
+                .encode("latin-1", "replace")
+                .decode("latin-1"),
+                0,
+                1,
+            )
+
+            if kaution_status == "Ratenzahlung":
+                pdf.set_font("helvetica", size=10)
+                pdf.cell(45, 6, "Ratenvereinbarung:", 0, 0)
+                pdf.set_font("helvetica", "B", 10)
+                raten_info = f"{kaution_raten_anzahl} Raten"
+                if kaution_raten_notiz:
+                    raten_info += f" ({kaution_raten_notiz})"
+                pdf.cell(
+                    0,
+                    6,
+                    raten_info.encode("latin-1", "replace").decode("latin-1"),
+                    0,
+                    1,
+                )
+        else:
+            grund_text = (
+                kaution_einbehalt.encode("latin-1", "replace").decode("latin-1")
+                if kaution_einbehalt
+                else "Keine Angabe"
+            )
+            pdf.cell(45, 6, "Kautions-Einbehalt:", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(0, 6, f"{kaution_einbehalt_betrag:.2f} EUR", 0, 1)
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(45, 6, "Grund:", 0, 0)
+            pdf.set_font("helvetica", "I", 10)
+            pdf.cell(0, 6, grund_text, 0, 1)
+
+        pdf.ln(2)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, "Übergebene Schlüssel:", 0, 1)
+        pdf.set_font("helvetica", size=10)
+        if s_wohnung > 0:
+            pdf.cell(0, 5, f"  - Wohnungsschlüssel: {s_wohnung} Stk.", 0, 1)
+        if s_haustür > 0:
+            pdf.cell(0, 5, f"  - Haustürschlüssel: {s_haustür} Stk.", 0, 1)
+        if s_zimmer > 0:
+            pdf.cell(0, 5, f"  - Zimmerschlüssel: {s_zimmer} Stk.", 0, 1)
+        if s_briefkasten > 0:
+            pdf.cell(0, 5, f"  - Briefkastenschlüssel: {s_briefkasten} Stk.", 0, 1)
+        if s_keller > 0:
+            pdf.cell(0, 5, f"  - Kellerschlüssel: {s_keller} Stk.", 0, 1)
+
+        for item in st.session_state.weitere_schluessel:
+            pdf.cell(
+                0,
+                5,
+                f"  - {item['bezeichnung'].encode('latin-1', 'replace').decode('latin-1')}: {item['anzahl']} Stk.",
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 3. Zählerstände
+        pdf.chapter_title("3. Zählerstände")
+        pdf.set_font("helvetica", size=10)
+        for z in zaehler_daten:
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(30, 6, f"{z['typ']}:", 0, 0)
+            pdf.set_font("helvetica", size=10)
+            pdf.cell(70, 6, f"{z['bezeichnung']} (Nr: {z['nummer']})", 0, 0)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(
+                0,
+                6,
+                f"Stand: {z['stand']:.3f} {z['einheit']}"
+                .encode("latin-1", "replace")
+                .decode("latin-1"),
+                0,
+                1,
+            )
+        pdf.ln(4)
+
+        # 4. Zustand der Räume & Fotos
+        pdf.chapter_title("4. Zustand der Räume und Beweisfotos")
+
+        temp_files = []
+
+        for raum, daten in zustaende.items():
+            pdf.set_font("helvetica", "B", 10)
+            pdf.set_text_color(30, 41, 59)
+            pdf.cell(40, 6, f"- {raum}:", 0, 0)
+
+            pdf.set_font("helvetica", "B", 10)
+            if daten["zustand"] == "Einwandfrei":
+                pdf.set_text_color(16, 185, 129)
+            elif daten["zustand"] == "Leichte Mängel":
+                pdf.set_text_color(217, 119, 6)
+            else:
+                pdf.set_text_color(220, 38, 38)
+
+            pdf.cell(0, 6, daten["zustand"], 0, 1)
+            pdf.set_text_color(51, 65, 85)
+
+            pdf.set_font("helvetica", size=9)
+            pdf.cell(10, 5, "", 0, 0)
+            boden_text = f"Boden: {daten['boden_belag'] if daten['boden_belag'] else 'Keine Angabe'} ({daten['boden_zustand']})"
+            waende_text = f"Wände/Decken: {daten['waende_dechen']} | Dübellöcher: {daten['duebelloecher']}"
+            pdf.cell(
+                0,
+                5,
+                boden_text.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+            pdf.cell(10, 5, "", 0, 0)
+            pdf.cell(
+                0,
+                5,
+                waende_text.encode("latin-1", "replace").decode("latin-1"),
+                0,
+                1,
+            )
+
+            if daten["fliesen_gerissen_ja"]:
+                pdf.cell(10, 5, "", 0, 0)
+                fliesen_riss_str = (
+                    f"Fliesen-Risse: Ja, Anzahl: {daten['fliesen_anzahl_risse']}"
+                )
+                pdf.set_text_color(220, 38, 38)
+                pdf.cell(
+                    0,
+                    5,
+                    fliesen_riss_str.encode("latin-1", "replace").decode(
+                        "latin-1"
+                    ),
+                    0,
+                    1,
+                )
+                pdf.set_text_color(51, 65, 85)
+
+            if daten["schadstellen_ja"]:
+                pdf.cell(10, 5, "", 0, 0)
+                schad_str = f"Schadstelle: {daten['schadstellen_beschr']} (Größe: {daten['schadstellen_gr']})"
+                pdf.set_text_color(220, 38, 38)
+                pdf.cell(
+                    0,
+                    5,
+                    schad_str.encode("latin-1", "replace").decode("latin-1"),
+                    0,
+                    1,
+                )
+                pdf.set_text_color(51, 65, 85)
+
+            if daten["kommentar"]:
+                pdf.set_font("helvetica", "I", 9)
+                pdf.cell(10, 5, "", 0, 0)
+                pdf.multi_cell(
+                    0,
+                    5,
+                    f"Bemerkung: {daten['kommentar'].encode('latin-1', 'replace').decode('latin-1')}",
+                )
+
+            if daten["fotos"]:
+                pdf.ln(2)
+                start_x = 22
+                start_y = pdf.get_y()
+                img_width = 70
+                img_gap = 6
+                max_height_in_row = 0
+
+                for idx, foto in enumerate(daten["fotos"]):
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".jpg"
+                    ) as tmp_img:
+                        tmp_img.write(foto.getbuffer())
+                        tmp_img_path = tmp_img.name
+                        temp_files.append(tmp_img_path)
+
+                    if idx > 0 and idx % 2 == 0:
+                        start_y += max_height_in_row + 4
+                        start_x = 22
+                        max_height_in_row = 0
+
+                    try:
+                        with Image.open(tmp_img_path) as pil_img:
+                            w_orig, h_orig = pil_img.size
+                            calc_height = (img_width / w_orig) * h_orig
+                            if calc_height > max_height_in_row:
+                                max_height_in_row = calc_height
+                    except Exception:
+                        calc_height = 50
+
+                    if start_y + calc_height > 265:
+                        pdf.add_page()
+                        start_y = pdf.get_y() + 5
+                        start_x = 22
+
+                    try:
+                        current_x = start_x + ((idx % 2) * (img_width + img_gap))
+                        pdf.image(tmp_img_path, x=current_x, y=start_y, w=img_width)
+                    except Exception:
+                        pass
+
+                    pdf.set_y(start_y + max_height_in_row + 5)
+
+            pdf.ln(3)
+
+        # 5. Sonstige Bemerkungen
+        pdf.chapter_title("5. Sonstige Bemerkungen")
+        pdf.set_font("helvetica", size=10)
+        if sonstige_bemerkungen:
+            pdf.multi_cell(
+                0,
+                5,
+                sonstige_bemerkungen.encode("latin-1", "replace").decode(
+                    "latin-1"
+                ),
+            )
+        else:
+            pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
+        pdf.ln(4)
+
+        # 6. Unterschriften im PDF
+        pdf.chapter_title("6. Unterschriften")
+        pdf.ln(2)
+
+        sig_y = pdf.get_y()
+        if sig_y > 230:
+            pdf.add_page()
+            sig_y = pdf.get_y()
+
+        # Canvas-Daten konvertieren & einbetten falls vorhanden
+        if canvas_vermieter.image_data is not None:
+            v_img = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
+            v_bg = Image.new("RGB", v_img.size, (255, 255, 255))
+            v_bg.paste(v_img, mask=v_img.split()[3])
+            v_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+            v_bg.save(v_path)
+            temp_files.append(v_path)
+            pdf.image(v_path, x=15, y=sig_y, w=80)
+
+        if canvas_mieter.image_data is not None:
+            m_img = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
+            m_bg = Image.new("RGB", m_img.size, (255, 255, 255))
+            m_bg.paste(m_img, mask=m_img.split()[3])
+            m_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
+            m_bg.save(m_path)
+            temp_files.append(m_path)
+            pdf.image(m_path, x=115, y=sig_y, w=80)
+
+        pdf.set_y(sig_y + 25)
+        pdf.set_font("helvetica", "", 9)
+        pdf.cell(90, 5, "________________________________________", 0, 0, "L")
+        pdf.cell(10, 5, "", 0, 0)
+        pdf.cell(90, 5, "________________________________________", 0, 1, "L")
+
+        pdf.cell(90, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
+        pdf.cell(10, 5, "", 0, 0)
+        pdf.cell(90, 5, "Mieter", 0, 1, "L")
+
+        # PDF temporär speichern & Download bereitstellen
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            pdf.output(tmp_pdf.name)
+            pdf_path = tmp_pdf.name
+
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
+        st.download_button(
+            label="📥 PDF-Protokoll herunterladen",
+            data=pdf_bytes,
+            file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+        # Aufräumen der temporären Bilddateien
+        for tf in temp_files:
+            try:
+                os.remove(tf)
+            except Exception:
+                pass
