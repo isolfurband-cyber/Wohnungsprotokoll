@@ -512,6 +512,7 @@ with st.container():
             height=150,
             width=280,
             drawing_mode="freedraw",
+            return_image_data=True,  # <--- Hier korrigiert
             key="canvas_vermieter",
         )
         if (
@@ -533,6 +534,7 @@ with st.container():
             height=150,
             width=280,
             drawing_mode="freedraw",
+            return_image_data=True,  # <--- Hier korrigiert
             key="canvas_mieter",
         )
         if (
