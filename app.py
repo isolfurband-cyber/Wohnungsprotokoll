@@ -873,35 +873,30 @@ if st.button(
         sig_y = pdf.get_y()
 
         def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-            if isinstance(canvas_result, dict) and "image_data" in canvas_result:
+            if isinstance(canvas_result, dict) and canvas_result.get("image_data") is not None:
                 img_data = canvas_result["image_data"]
-                if img_data is not None:
+                if img_data is not None and img_data.size > 0:
                     img_array = img_data.astype("uint8")
                     pil_img = Image.fromarray(img_array, mode="RGBA")
-                    extrema = pil_img.getextrema()
-                    if extrema:
-                        background = Image.new(
-                            "RGB", pil_img.size, (255, 255, 255)
+                    
+                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                    background.paste(pil_img, (0, 0), pil_img)
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        background.save(tmp.name, "PNG")
+                        tmp_path = tmp.name
+                        temp_files.append(tmp_path)
+
+                    w_orig, h_orig = background.size
+                    if w_orig > 0:
+                        height = (width / w_orig) * h_orig
+                        pdf_obj.image(
+                            tmp_path,
+                            x=x_pos,
+                            y=y_pos - height + 4,
+                            w=width,
+                            h=height,
                         )
-                        background.paste(pil_img, mask=pil_img.split()[3])
-
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".png"
-                        ) as tmp:
-                            background.save(tmp.name, "PNG")
-                            tmp_path = tmp.name
-                            temp_files.append(tmp_path)
-
-                        w_orig, h_orig = background.size
-                        if w_orig > 0:
-                            height = (width / w_orig) * h_orig
-                            pdf_obj.image(
-                                tmp_path,
-                                x=x_pos,
-                                y=y_pos - height + 4,
-                                w=width,
-                                h=height,
-                            )
 
         process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
         process_signature(canvas_mieter, pdf, 115, sig_y, 75)
