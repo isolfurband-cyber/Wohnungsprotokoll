@@ -472,7 +472,7 @@ with st.container():
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand":boden_zustand,
+                "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -863,11 +863,11 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-        # 6. Unterschriften (Sicherstellen, dass Kapitel 6 komplett auf eine neue Seite kommt, falls nicht genug Platz ist)
+        # 6. Unterschriften
         if pdf.get_y() > 190:
             pdf.add_page()
         else:
-            pdf.ln(15)  # Genug Platz nach oben geschaffen, damit der Text nicht kollidiert
+            pdf.ln(15)
 
         pdf.chapter_title("6. Unterschriften")
         pdf.set_font("helvetica", size=9)
@@ -879,7 +879,9 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(35)  # Viel Luft nach unten für die Unterschriftenfelder
+        pdf.ln(
+            45
+        )  # Hier wurden zusätzliche Zeilenumbrüche (Abstand) eingefügt, um das Bild weiter nach unten zu schieben
 
         # Y-Position für die Unterschriftslinie festlegen
         line_y = pdf.get_y()
