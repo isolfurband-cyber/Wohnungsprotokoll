@@ -878,23 +878,16 @@ if st.button(
                 if img_data is not None and img_data.size > 0:
                     img_array = img_data.astype("uint8")
                     
-                    # Prüfen ob im Canvas überhaupt gezeichnet wurde (nicht nur leerer Weißraum)
-                    # Wenn Alpha-Kanal existiert oder alle Pixel weiß sind
-                    if img_array.shape[2] == 4:
-                        # Konvertiere RGBA zu RGB mit weißem Hintergrund
-                        pil_img = Image.fromarray(img_array, mode="RGBA")
-                        background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                        background.paste(pil_img, (0, 0), pil_img)
-                    else:
-                        background = Image.fromarray(img_array, mode="RGB")
+                    # Direkte Konvertierung der RGB-Kanäle (Weißer Hintergrund + schwarze Striche)
+                    pil_img = Image.fromarray(img_array[:, :, :3], mode="RGB")
 
                     # Speichere die Unterschrift als temporäres PNG ab
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        background.save(tmp.name, "PNG")
+                        pil_img.save(tmp.name, "PNG")
                         tmp_path = tmp.name
                         temp_files.append(tmp_path)
 
-                    w_orig, h_orig = background.size
+                    w_orig, h_orig = pil_img.size
                     if w_orig > 0:
                         height = (width / w_orig) * h_orig
                         # Zeichne das Bild exakt über die Signaturlinie
