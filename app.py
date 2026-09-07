@@ -471,7 +471,7 @@ with st.container():
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag":boden_belag,
+                "boden_belag": boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -863,9 +863,11 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-        # 6. Unterschriften
-        if pdf.get_y() > 210:
+        # 6. Unterschriften (Sicherstellen, dass Kapitel 6 komplett auf eine neue Seite kommt, falls nicht genug Platz ist)
+        if pdf.get_y() > 200:
             pdf.add_page()
+        else:
+            pdf.ln(10)
 
         pdf.chapter_title("6. Unterschriften")
         pdf.set_font("helvetica", size=9)
@@ -877,7 +879,7 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(15)  # Genug Abstand nach unten für die Unterschriften schaffen
+        pdf.ln(25)  # Genug Abstand nach unten für die Unterschriften schaffen
 
         # Y-Position für die Unterschriftslinie festlegen
         line_y = pdf.get_y()
