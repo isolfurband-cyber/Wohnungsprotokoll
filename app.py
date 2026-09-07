@@ -852,7 +852,7 @@ else:
         pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
     pdf.ln(4)
 
-    # 6. Unterschriften im PDF (Hier wurde das Unicode-Häkchen durch "[X]" ersetzt)
+    # 6. Unterschriften & Bestätigung
     pdf.chapter_title("6. Unterschriften & Bestätigung")
     pdf.ln(2)
 
@@ -887,8 +887,8 @@ else:
     pdf.cell(10, 5, "", 0, 0)
     pdf.cell(90, 5, "Mieter", 0, 1, "L")
 
-    # PDF als Bytes ausgeben
-    pdf_output = pdf.output(dest="S").encode("latin-1")
+    # PDF direkt als Bytes ausgeben (Kompatibel mit allen fpdf2-Versionen)
+    pdf_output = bytes(pdf.output())
 
     # Aufräumen der temporären Bilddateien
     for tf in temp_files:
