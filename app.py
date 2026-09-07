@@ -264,8 +264,11 @@ with st.container():
     if "zaehler_liste" not in st.session_state:
         st.session_state.zaehler_liste = [
             {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
-            {"typ": "Wasser", "bezeichnung": "Wasser Hauptzähler", "einheit": "m³"},
-            {"typ": "Heizung", "bezeichnung": "Heizung", "einheit": "Einheiten"},
+            {"typ": "Wasser", "bezeichnung": "Kaltwasserzähler", "einheit": "m³"},
+            {"typ": "Wasser", "bezeichnung": "Warmwasserzähler", "einheit": "m³"},
+            {"typ": "Heizung", "bezeichnung": "Heizung 1", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung 2", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung 3", "einheit": "Einheiten"},
         ]
 
     with st.expander("➕ Weiteren Zähler hinzufügen"):
@@ -879,9 +882,7 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(
-            45
-        )  # Hier wurden zusätzliche Zeilenumbrüche (Abstand) eingefügt, um das Bild weiter nach unten zu schieben
+        pdf.ln(45)
 
         # Y-Position für die Unterschriftslinie festlegen
         line_y = pdf.get_y()
@@ -905,7 +906,6 @@ if st.button(
                 w_orig, h_orig = background.size
                 if w_orig > 0:
                     height = (width / w_orig) * h_orig
-                    # Bild passgenau direkt über der Unterschriftslinie platzieren
                     pdf_obj.image(
                         tmp_path, x=x_pos, y=y_pos - height - 2, w=width, h=height
                     )
@@ -938,7 +938,7 @@ if st.button(
             pdf_bytes = f.read()
 
         st.download_button(
-            label="📥 PDF-Protokoll herunterladen",
+            label="📥 Protokoll generieren & herunterladen",
             data=pdf_bytes,
             file_name=f"{protokoll_typ}_{mieter.replace(' ', '_')}.pdf",
             mime="application/pdf",
