@@ -4,6 +4,7 @@ import tempfile
 from fpdf import FPDF
 from PIL import Image, ImageDraw
 import streamlit as st
+from streamlit_drawable_canvas import st_canvas
 
 # 1. Seitenkonfiguration
 st.set_page_config(
@@ -518,18 +519,36 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("✍️ 6. Unterschriften & Bestätigung")
     st.write(
-        "Bestätigen Sie die ordnungsgemäße Durchführung der Protokollierung durch Setzen des Hakens."
+        "Bitte hier direkt mit der Maus oder dem Finger (Tablet/iPad) unterschreiben:"
     )
 
     col_sig1, col_sig2 = st.columns(2)
 
     with col_sig1:
-        sig_vermieter = st.checkbox(
-            "✅ Vermieter (KARE-Immobilien) hat unterschrieben", value=True
+        st.write("**Vermieter (KARE-Immobilien)**")
+        canvas_vermieter = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.3)",
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#FFFFFF",
+            height=130,
+            width=300,
+            drawing_mode="freedraw",
+            key="canvas_vermieter",
         )
 
     with col_sig2:
-        sig_mieter = st.checkbox("✅ Mieter hat unterschrieben", value=True)
+        st.write("**Mieter**")
+        canvas_mieter = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.3)",
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#FFFFFF",
+            height=130,
+            width=300,
+            drawing_mode="freedraw",
+            key="canvas_mieter",
+        )
 
 st.write("")
 
@@ -852,32 +871,58 @@ else:
         pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
     pdf.ln(4)
 
-    # 6. Unterschriften & Bestätigung
+    # 6. Unterschriften & Bestätigung im PDF abbilden
     pdf.chapter_title("6. Unterschriften & Bestätigung")
     pdf.ln(2)
 
     sig_y = pdf.get_y()
-    if sig_y > 230:
+    if sig_y > 210:
         pdf.add_page()
         sig_y = pdf.get_y()
 
-    pdf.set_font("helvetica", "B", 10)
-    v_status_text = (
-        "[X] Digital bestaetigt durch Vermieter (KARE-Immobilien)"
-        if sig_vermieter
-        else "[ ] Nicht bestaetigt"
-    )
-    m_status_text = (
-        "[X] Digital bestaetigt durch Mieter"
-        if sig_mieter
-        else "[ ] Nicht bestaetigt"
-    )
+    # Unterschriftenbilder temporär sichern und einbetten, falls vorhanden
+    sig_v_path = None
+    if canvas_vermieter.image_data is not None:
+        try:
+            img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"))
+            # Prüfen ob etwas gezeichnet wurde (nicht rein weiß)
+            if img_v.getbbox():
+                sig_v_path = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ).name
+                img_v.save(sig_v_path)
+                temp_files.append(sig_v_path)
+        except Exception:
+            pass
 
-    pdf.cell(90, 6, v_status_text, 0, 0, "L")
-    pdf.cell(10, 6, "", 0, 0)
-    pdf.cell(90, 6, m_status_text, 0, 1, "L")
+    sig_m_path = None
+    if canvas_mieter.image_data is not None:
+        try:
+            img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"))
+            if img_m.getbbox():
+                sig_m_path = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ).name
+                img_m.save(sig_m_path)
+                temp_files.append(sig_m_path)
+        except Exception:
+            pass
 
-    pdf.ln(10)
+    current_y_sig = pdf.get_y()
+
+    # Unterschriften-Grafiken ins PDF drucken
+    if sig_v_path:
+        try:
+            pdf.image(sig_v_path, x=15, y=current_y_sig, w=80)
+        except Exception:
+            pass
+    if sig_m_path:
+        try:
+            pdf.image(sig_m_path, x=110, y=current_y_sig, w=80)
+        except Exception:
+            pass
+
+    pdf.ln(25)
     pdf.set_font("helvetica", "", 9)
     pdf.cell(90, 5, "________________________________________", 0, 0, "L")
     pdf.cell(10, 5, "", 0, 0)
@@ -885,12 +930,12 @@ else:
 
     pdf.cell(90, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
     pdf.cell(10, 5, "", 0, 0)
-    pdf.cell(90, 5, "Mieter", 0, 1, "L")
+    pdf.cell(90, 5, f"Mieter ({mieter})", 0, 1, "L")
 
-    # PDF direkt als Bytes ausgeben (Kompatibel mit allen fpdf2-Versionen)
+    # PDF direkt als Bytes ausgeben
     pdf_output = bytes(pdf.output())
 
-    # Aufräumen der temporären Bilddateien
+    # Aufräumen der temporären Dateien
     for tf in temp_files:
         try:
             os.unlink(tf)
