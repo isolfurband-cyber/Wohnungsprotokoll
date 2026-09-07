@@ -849,7 +849,7 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-        # 6. Unterschriften
+      # 6. Unterschriften
         if pdf.get_y() > 210:
             pdf.add_page()
 
@@ -868,21 +868,22 @@ if st.button(
         sig_y = pdf.get_y()
 
         def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-            if isinstance(canvas_result, dict) and "image_data" in canvas_result:
+            if isinstance(canvas_result, dict) and canvas_result.get("image_data") is not None:
                 img_data = canvas_result["image_data"]
-                if img_data is not None:
+                # Prüfen ob Daten da sind und das Array die richtige Form hat
+                if img_data.size > 0:
                     img_array = img_data.astype("uint8")
                     pil_img = Image.fromarray(img_array, mode="RGBA")
-                    extrema = pil_img.getextrema()
-                    if extrema:
-                        background = Image.new(
-                            "RGB", pil_img.size, (255, 255, 255)
-                        )
-                        background.paste(pil_img, mask=pil_img.split()[3])
-
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".png"
-                        ) as tmp:
+                    
+                    # Ein weißes Hintergrundbild erzeugen und die Unterschrift darüberlegen
+                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                    background.paste(pil_img, mask=pil_img.split()[3])
+                    
+                    # Prüfen, ob tatsächlich etwas gezeichnet wurde (nicht nur ein komplett weißes Canvas)
+                    # Wir konvertieren zu Graustufen und suchen nach dunklen Pixeln (< 200)
+                    np_check = np.array(pil_img)
+                    if np.any(np_check[:, :, 3] > 0): # Wenn Alpha-Kanal aktiv gezeichnet wurde
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                             background.save(tmp.name, "PNG")
                             tmp_path = tmp.name
                             temp_files.append(tmp_path)
@@ -890,10 +891,11 @@ if st.button(
                         w_orig, h_orig = background.size
                         if w_orig > 0:
                             height = (width / w_orig) * h_orig
+                            # Bild direkt über der Unterschriftslinie platzieren
                             pdf_obj.image(
                                 tmp_path,
                                 x=x_pos,
-                                y=y_pos - height + 4,
+                                y=y_pos - height + 2,
                                 w=width,
                                 h=height,
                             )
@@ -911,31 +913,3 @@ if st.button(
             95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0
         )
         pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
-
-        # Vollständiger und sicherer Download-Block
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".pdf"
-        ) as tmp_file:
-            pdf_path = tmp_file.name
-            temp_files.append(pdf_path)
-        
-        pdf.output(pdf_path)
-
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-
-        st.download_button(
-            label="📥 PDF-Protokoll jetzt herunterladen",
-            data=pdf_bytes,
-            file_name=f"{protokoll_typ}_{wohnung.replace(' ', '_')}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-
-        # Temporäre Dateien aufräumen
-        for t_file in temp_files:
-            try:
-                if os.path.exists(t_file):
-                    os.unlink(t_file)
-            except Exception:
-                pass
