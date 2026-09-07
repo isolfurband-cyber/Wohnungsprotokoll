@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import os
 import tempfile
 from fpdf import FPDF
@@ -465,7 +466,7 @@ with st.container():
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag": boden_belag,
+                "boden_belag":boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -863,34 +864,54 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-            if isinstance(canvas_result, dict) and "image_data" in canvas_result:
-                img_data = canvas_result["image_data"]
-                if img_data is not None and np.any(img_data > 0):
-                    img_array = img_data.astype("uint8")
-                    pil_img = Image.fromarray(img_array, mode="RGBA")
 
-                    # Weißer Hintergrund, damit die Transparenz im PDF sichtbar bleibt
-                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                    background.paste(pil_img, mask=pil_img.split()[3])
+        def draw_signature_from_json(canvas_result, pdf_obj, x_pos, y_pos, width):
+            canvas_w, canvas_h = 280, 150
+            sig_img = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
+            draw = ImageDraw.Draw(sig_img)
 
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png"
-                    ) as tmp:
-                        background.save(tmp.name, "PNG")
-                        tmp_path = tmp.name
-                        temp_files.append(tmp_path)
+            has_drawn = False
+            if (
+                isinstance(canvas_result, dict)
+                and "json_data" in canvas_result
+                and canvas_result["json_data"]
+            ):
+                objects = canvas_result["json_data"].get("objects", [])
+                for obj in objects:
+                    if obj.get("type") == "path":
+                        path = obj.get("path", [])
+                        points = []
+                        for cmd in path:
+                            if cmd[0] in ["M", "L"] and len(cmd) >= 3:
+                                points.append((cmd[1], cmd[2]))
+                            elif cmd[0] == "Q" and len(cmd) >= 5:
+                                points.append((cmd[3], cmd[4]))
+                            elif cmd[0] == "C" and len(cmd) >= 7:
+                                points.append((cmd[5], cmd[6]))
 
-                    w_orig, h_orig = background.size
-                    height = (width / w_orig) * h_orig
+                        if len(points) > 1:
+                            has_drawn = True
+                            for k in range(len(points) - 1):
+                                draw.line(
+                                    [points[k], points[k + 1]], fill=(0, 0, 0), width=3
+                                )
+                        elif len(points) == 1:
+                            has_drawn = True
+                            draw.point(points[0], fill=(0, 0, 0))
 
-                    pdf_obj.image(
-                        tmp_path, x=x_pos, y=y_pos, w=width, h=height
-                    )
+            if has_drawn:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    sig_img.save(tmp.name, "PNG")
+                    tmp_path = tmp.name
+                    temp_files.append(tmp_path)
+
+                height = (width / canvas_w) * canvas_h
+                pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
+
 
         # Unterschriften exakt über den Linien platzieren
-        process_signature(canvas_vermieter, pdf, 15, sig_y - 12, 75)
-        process_signature(canvas_mieter, pdf, 115, sig_y - 12, 75)
+        draw_signature_from_json(canvas_vermieter, pdf, 15, sig_y - 12, 75)
+        draw_signature_from_json(canvas_mieter, pdf, 115, sig_y - 12, 75)
 
         # Linien und Beschriftungen unter den Unterschriften platzieren
         pdf.set_y(sig_y + 8)
