@@ -73,7 +73,6 @@ st.markdown(
 )
 st.markdown("---")
 
-# Protokoll-Typ Auswahl
 protokoll_typ = st.selectbox(
     "Protokoll-Art auswählen:",
     ["Wohnungsübergabeprotokoll", "Wohnungsabnahmeprotokoll"],
@@ -431,7 +430,7 @@ with st.container():
 
             zustaende[raum] = {
                 "zustand": zustand,
-                "boden_belag": boden_belag,
+                "boden_belag":boden_belag,
                 "boden_zustand": boden_zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
@@ -811,7 +810,7 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-        # 6. Unterschriften (PDF-Ausgabe)
+        # 6. Unterschriften (PDF-Ausgabe mit sicherem Try-Except Block)
         if pdf.get_y() > 210:
             pdf.add_page()
 
@@ -820,39 +819,50 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        if (
-            canvas_vermieter_result is not None
-            and canvas_vermieter_result.image_data is not None
-        ):
-            img_v = Image.fromarray(
-                canvas_vermieter_result.image_data.astype("uint8"), mode="RGBA"
-            )
-            bg = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
-            img_v = Image.alpha_composite(bg, img_v).convert("RGB")
+        # Vermieter Unterschrift sicher auslesen
+        try:
+            if (
+                canvas_vermieter_result is not None
+                and hasattr(canvas_vermieter_result, "image_data")
+                and canvas_vermieter_result.image_data is not None
+            ):
+                img_v = Image.fromarray(
+                    canvas_vermieter_result.image_data.astype("uint8"),
+                    mode="RGBA",
+                )
+                bg = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
+                img_v = Image.alpha_composite(bg, img_v).convert("RGB")
 
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".png"
-            ) as tmp_sig_v:
-                img_v.save(tmp_sig_v.name)
-                temp_files.append(tmp_sig_v.name)
-                pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ) as tmp_sig_v:
+                    img_v.save(tmp_sig_v.name)
+                    temp_files.append(tmp_sig_v.name)
+                    pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
+        except Exception:
+            pass
 
-        if (
-            canvas_mieter_result is not None
-            and canvas_mieter_result.image_data is not None
-        ):
-            img_m = Image.fromarray(
-                canvas_mieter_result.image_data.astype("uint8"), mode="RGBA"
-            )
-            bg = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
-            img_m = Image.alpha_composite(bg, img_m).convert("RGB")
+        # Mieter Unterschrift sicher auslesen
+        try:
+            if (
+                canvas_mieter_result is not None
+                and hasattr(canvas_mieter_result, "image_data")
+                and canvas_mieter_result.image_data is not None
+            ):
+                img_m = Image.fromarray(
+                    canvas_mieter_result.image_data.astype("uint8"), mode="RGBA"
+                )
+                bg = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
+                img_m = Image.alpha_composite(bg, img_m).convert("RGB")
 
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".png"
-            ) as tmp_sig_m:
-                img_m.save(tmp_sig_m.name)
-                temp_files.append(tmp_sig_m.name)
-                pdf.image(tmp_sig_m.name, x=115, y=sig_y, w=80)
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ) as tmp_sig_m:
+                    img_m.save(tmp_sig_m.name)
+                    temp_files.append(tmp_sig_m.name)
+                    pdf.image(tmp_sig_m.name, x=115, y=sig_y, w=80)
+        except Exception:
+            pass
 
         pdf.set_y(sig_y + 35)
         pdf.set_font("helvetica", "", 9)
