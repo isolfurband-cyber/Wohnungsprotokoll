@@ -467,12 +467,12 @@ with st.container():
 
     with col_sig1:
         st.write("**Vermieter (KARE)**")
-        canvas_vermieter = st_canvas(
+        canvas_vermieter_result = st_canvas(
             fill_color="rgba(255, 255, 255, 0)",
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            update_streamlit=False,  # Wichtig: Verhindert den Live-RuntimeError
+            realtime_update=False,  # Korrigierter Parameter
             height=150,
             width=280,
             drawing_mode="freedraw",
@@ -481,12 +481,12 @@ with st.container():
 
     with col_sig2:
         st.write("**Mieter**")
-        canvas_mieter = st_canvas(
+        canvas_mieter_result = st_canvas(
             fill_color="rgba(255, 255, 255, 0)",
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            update_streamlit=False,  # Wichtig: Verhindert den Live-RuntimeError
+            realtime_update=False,  # Korrigierter Parameter
             height=150,
             width=280,
             drawing_mode="freedraw",
@@ -822,9 +822,12 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        if canvas_vermieter.image_data is not None:
+        if (
+            canvas_vermieter_result is not None
+            and canvas_vermieter_result.image_data is not None
+        ):
             img_v = Image.fromarray(
-                canvas_vermieter.image_data.astype("uint8"), mode="RGBA"
+                canvas_vermieter_result.image_data.astype("uint8"), mode="RGBA"
             )
             bg = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
             img_v = Image.alpha_composite(bg, img_v).convert("RGB")
@@ -836,9 +839,12 @@ if st.button(
                 temp_files.append(tmp_sig_v.name)
                 pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
 
-        if canvas_mieter.image_data is not None:
+        if (
+            canvas_mieter_result is not None
+            and canvas_mieter_result.image_data is not None
+        ):
             img_m = Image.fromarray(
-                canvas_mieter.image_data.astype("uint8"), mode="RGBA"
+                canvas_mieter_result.image_data.astype("uint8"), mode="RGBA"
             )
             bg = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
             img_m = Image.alpha_composite(bg, img_m).convert("RGB")
