@@ -466,7 +466,7 @@ with st.container():
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand":boden_zustand,
+          "boden_zustand": boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -875,9 +875,14 @@ if st.button(
             tmp_path = tmp.name
             temp_files.append(tmp_path)
 
-          pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width)
+          # Seitenverhältnis berechnen, damit die Unterschrift perfekt skaliert wird
+          w_orig, h_orig = img.size
+          height = (width / w_orig) * h_orig
+
+          pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
 
 
+    # Unterschriften auf gleicher Höhe platzieren
     process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
     process_signature(canvas_mieter, pdf, 115, sig_y, 75)
 
