@@ -196,38 +196,34 @@ if st.button("Wohnungsabnahmeprotokoll als PDF generieren", type="primary"):
             except Exception as e:
                 pdf.cell(0, 6, f"[Fehler beim Laden des Bildes: {uploaded_file.name}]", 0, 1)
 
-    # Unterschriften ins PDF rendern (Dictionary-Zugriff mit ["image_data"])
+    # Unterschriften ins PDF rendern
     pdf.chapter_title("5. Unterschriften")
     pdf.ln(2)
     sig_y = pdf.get_y()
 
     # Vermieter Unterschrift verarbeiten
-    if canvas_vermieter and canvas_vermieter.get("image_data") is not None:
+    if canvas_vermieter.image_data is not None:
         try:
-            img_arr_v = canvas_vermieter.get("image_data")
-            if img_arr_v is not None and len(img_arr_v) > 0:
-                img_v = Image.fromarray(img_arr_v.astype("uint8"), mode="RGBA")
-                bg_v = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
-                alpha_v = Image.alpha_composite(bg_v, img_v).convert("RGB")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_sig_v:
-                    alpha_v.save(tmp_sig_v.name)
-                    st.session_state.temp_files.append(tmp_sig_v.name)
-                    pdf.image(tmp_sig_v.name, x=20, y=sig_y, w=75)
+            img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
+            bg_v = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
+            alpha_v = Image.alpha_composite(bg_v, img_v).convert("RGB")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_sig_v:
+                alpha_v.save(tmp_sig_v.name)
+                st.session_state.temp_files.append(tmp_sig_v.name)
+                pdf.image(tmp_sig_v.name, x=20, y=sig_y, w=75)
         except Exception:
             pass
 
     # Mieter Unterschrift verarbeiten
-    if canvas_mieter and canvas_mieter.get("image_data") is not None:
+    if canvas_mieter.image_data is not None:
         try:
-            img_arr_m = canvas_mieter.get("image_data")
-            if img_arr_m is not None and len(img_arr_m) > 0:
-                img_m = Image.fromarray(img_arr_m.astype("uint8"), mode="RGBA")
-                bg_m = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
-                alpha_m = Image.alpha_composite(bg_m, img_m).convert("RGB")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_sig_m:
-                    alpha_m.save(tmp_sig_m.name)
-                    st.session_state.temp_files.append(tmp_sig_m.name)
-                    pdf.image(tmp_sig_m.name, x=110, y=sig_y, w=75)
+            img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
+            bg_m = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
+            alpha_m = Image.alpha_composite(bg_m, img_m).convert("RGB")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_sig_m:
+                alpha_m.save(tmp_sig_m.name)
+                st.session_state.temp_files.append(tmp_sig_m.name)
+                pdf.image(tmp_sig_m.name, x=110, y=sig_y, w=75)
         except Exception:
             pass
 
