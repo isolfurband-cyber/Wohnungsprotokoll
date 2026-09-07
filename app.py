@@ -892,9 +892,24 @@ if st.button(
             pdf.add_page()
             sig_y = pdf.get_y()
 
+        # Sichere Extraktion der Canvas-Daten, um den RuntimeError zu verhindern
+        v_img_data = None
+        try:
+            if canvas_vermieter is not None and hasattr(canvas_vermieter, "image_data") and canvas_vermieter.image_data is not None:
+                v_img_data = canvas_vermieter.image_data
+        except Exception:
+            v_img_data = None
+
+        m_img_data = None
+        try:
+            if canvas_mieter is not None and hasattr(canvas_mieter, "image_data") and canvas_mieter.image_data is not None:
+                m_img_data = canvas_mieter.image_data
+        except Exception:
+            m_img_data = None
+
         # Canvas-Daten konvertieren & einbetten falls vorhanden
-        if canvas_vermieter.image_data is not None:
-            v_img = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
+        if v_img_data is not None:
+            v_img = Image.fromarray(v_img_data.astype("uint8"), mode="RGBA")
             v_bg = Image.new("RGB", v_img.size, (255, 255, 255))
             v_bg.paste(v_img, mask=v_img.split()[3])
             v_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
@@ -902,8 +917,8 @@ if st.button(
             temp_files.append(v_path)
             pdf.image(v_path, x=15, y=sig_y, w=80)
 
-        if canvas_mieter.image_data is not None:
-            m_img = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
+        if m_img_data is not None:
+            m_img = Image.fromarray(m_img_data.astype("uint8"), mode="RGBA")
             m_bg = Image.new("RGB", m_img.size, (255, 255, 255))
             m_bg.paste(m_img, mask=m_img.split()[3])
             m_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
@@ -919,27 +934,3 @@ if st.button(
 
         pdf.cell(90, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
         pdf.cell(10, 5, "", 0, 0)
-        pdf.cell(90, 5, "Mieter", 0, 1, "L")
-
-        # PDF temporär speichern & Download bereitstellen
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-            pdf.output(tmp_pdf.name)
-            pdf_path = tmp_pdf.name
-
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-
-        st.download_button(
-            label="📥 PDF-Protokoll herunterladen",
-            data=pdf_bytes,
-            file_name=f"Protokoll_{mieter.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
-
-        # Aufräumen der temporären Bilddateien
-        for tf in temp_files:
-            try:
-                os.remove(tf)
-            except Exception:
-                pass
