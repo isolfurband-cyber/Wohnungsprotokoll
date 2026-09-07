@@ -865,20 +865,18 @@ if st.button(
         sig_y = pdf.get_y()
 
 
-        def add_signature_image(canvas_result, pdf_obj, x_pos, y_pos, width):
+        def add_signature_image(canvas_dict, pdf_obj, x_pos, y_pos, width):
             if (
-                canvas_result is not None
-                and hasattr(canvas_result, "image_data")
-                and canvas_result.image_data is not None
+                isinstance(canvas_dict, dict)
+                and "image_data" in canvas_dict
+                and canvas_dict["image_data"] is not None
             ):
-                img_data = canvas_result.image_data
+                img_data = canvas_dict["image_data"]
                 img = Image.fromarray(img_data.astype("uint8"), "RGBA")
 
-                # Auf weißem Hintergrund zusammenfügen
                 rgb_img = Image.new("RGB", img.size, (255, 255, 255))
                 rgb_img.paste(img, (0, 0), mask=img.split()[3])
 
-                # Prüfen, ob etwas gezeichnet wurde (nicht reinweiß)
                 arr = np.array(rgb_img)
                 if not np.all(arr >= 250):
                     with tempfile.NamedTemporaryFile(
