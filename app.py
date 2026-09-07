@@ -477,7 +477,7 @@ with st.container():
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand": boden_zustand,
+                "boden_zustand":boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -855,7 +855,7 @@ if st.button(
         pdf.ln(4)
 
         # 6. Unterschriften
-        if pdf.get_y() > 210:
+        if pdf.get_y() > 200:
             pdf.add_page()
 
         pdf.chapter_title("6. Unterschriften")
@@ -868,40 +868,43 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(12)
+        pdf.ln(8)
 
-        sig_y = pdf.get_y()
+        # Ziel-Y-Position für die Signaturlinie festlegen
+        line_y = pdf.get_y() + 22
 
-        def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
+        def process_signature(canvas_result, pdf_obj, x_pos, target_y, width):
             if isinstance(canvas_result, dict) and canvas_result.get("image_data") is not None:
                 img_data = canvas_result["image_data"]
                 if img_data is not None and img_data.size > 0:
                     img_array = img_data.astype("uint8")
                     pil_img = Image.fromarray(img_array, mode="RGBA")
                     
-                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                    background.paste(pil_img, (0, 0), pil_img)
+                    rgb_img = pil_img.convert("RGB")
                     
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        background.save(tmp.name, "PNG")
+                        rgb_img.save(tmp.name, "PNG")
                         tmp_path = tmp.name
                         temp_files.append(tmp_path)
 
-                    w_orig, h_orig = background.size
+                    w_orig, h_orig = rgb_img.size
                     if w_orig > 0:
                         height = (width / w_orig) * h_orig
+                        # Bild direkt oberhalb der Linie positionieren
                         pdf_obj.image(
                             tmp_path,
                             x=x_pos,
-                            y=y_pos - height + 4,
+                            y=target_y - height - 2,
                             w=width,
                             h=height,
                         )
 
-        process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
-        process_signature(canvas_mieter, pdf, 115, sig_y, 75)
+        # Signaturen über den Linien platzieren
+        process_signature(canvas_vermieter, pdf, 15, line_y, 75)
+        process_signature(canvas_mieter, pdf, 115, line_y, 75)
 
-        pdf.set_y(sig_y + 8)
+        # Linien und Beschriftungen zeichnen
+        pdf.set_y(line_y)
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(51, 65, 85)
         pdf.cell(95, 5, "________________________________________", 0, 0)
