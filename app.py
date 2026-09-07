@@ -471,7 +471,7 @@ with st.container():
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag": boden_belag,
+                "boden_belag":boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -512,7 +512,7 @@ with st.container():
             height=150,
             width=280,
             drawing_mode="freedraw",
-            return_image_data=True,  # <--- Hier korrigiert
+            return_image_data=True,
             key="canvas_vermieter",
         )
         if (
@@ -534,7 +534,7 @@ with st.container():
             height=150,
             width=280,
             drawing_mode="freedraw",
-            return_image_data=True,  # <--- Hier korrigiert
+            return_image_data=True,
             key="canvas_mieter",
         )
         if (
@@ -877,9 +877,10 @@ if st.button(
             0,
             1,
         )
-        pdf.ln(12)
+        pdf.ln(15)  # Genug Abstand nach unten für die Unterschriften schaffen
 
-        sig_y = pdf.get_y()
+        # Y-Position für die Unterschriftslinie festlegen
+        line_y = pdf.get_y()
 
 
         def process_signature_from_state(sig_key, pdf_obj, x_pos, y_pos, width):
@@ -900,19 +901,22 @@ if st.button(
                 w_orig, h_orig = background.size
                 if w_orig > 0:
                     height = (width / w_orig) * h_orig
+                    # Bild passgenau direkt über der Unterschriftslinie platzieren
                     pdf_obj.image(
-                        tmp_path, x=x_pos, y=y_pos - height + 4, w=width, h=height
+                        tmp_path, x=x_pos, y=y_pos - height - 2, w=width, h=height
                     )
 
 
-        process_signature_from_state("saved_vermieter_sig", pdf, 15, sig_y, 75)
-        process_signature_from_state("saved_mieter_sig", pdf, 115, sig_y, 75)
+        process_signature_from_state("saved_vermieter_sig", pdf, 15, line_y, 75)
+        process_signature_from_state("saved_mieter_sig", pdf, 115, line_y, 75)
 
-        pdf.set_y(sig_y + 8)
+        pdf.set_xy(15, line_y)
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(51, 65, 85)
         pdf.cell(95, 5, "________________________________________", 0, 0)
         pdf.cell(95, 5, "________________________________________", 0, 1)
+
+        pdf.set_xy(15, line_y + 5)
         pdf.set_font("helvetica", size=9)
         pdf.cell(
             95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0
