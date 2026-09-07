@@ -484,7 +484,7 @@ with st.container(border=True):
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag":boden_belag,
+                "boden_belag": boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -527,6 +527,7 @@ with st.container(border=True):
             height=150,
             width=280,
             drawing_mode="freedraw",
+            realtime_update=True,
             key="canvas_vermieter",
         )
 
@@ -540,6 +541,7 @@ with st.container(border=True):
             height=150,
             width=280,
             drawing_mode="freedraw",
+            realtime_update=True,
             key="canvas_mieter",
         )
 
