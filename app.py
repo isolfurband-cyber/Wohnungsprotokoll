@@ -868,27 +868,36 @@ if st.button(
         def add_signature_image(canvas_dict, pdf_obj, x_pos, y_pos, width):
             if (
                 isinstance(canvas_dict, dict)
-                and "image_data" in canvas_dict
-                and canvas_dict["image_data"] is not None
+                and canvas_dict.get("image_data") is not None
             ):
                 img_data = canvas_dict["image_data"]
-                img = Image.fromarray(img_data.astype("uint8"), "RGBA")
+                if img_data.shape[0] > 0 and img_data.shape[1] > 0:
+                    img = Image.fromarray(img_data.astype("uint8"), "RGBA")
 
-                rgb_img = Image.new("RGB", img.size, (255, 255, 255))
-                rgb_img.paste(img, (0, 0), mask=img.split()[3])
+                    # Hintergrund auf weiß setzen mittels Alpha-Kanal
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[3])
 
-                arr = np.array(rgb_img)
-                if not np.all(arr >= 250):
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png"
-                    ) as tmp:
-                        rgb_img.save(tmp.name, "PNG")
-                        tmp_path = tmp.name
-                        temp_files.append(tmp_path)
+                    # Prüfen, ob wirklich etwas gezeichnet wurde (nicht nur rein weiß)
+                    extrema = background.getextrema()
+                    is_empty = all(
+                        channel[0] == 255 and channel[1] == 255
+                        for channel in extrema
+                    )
 
-                    canvas_w, canvas_h = img.size
-                    height = (width / canvas_w) * canvas_h
-                    pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
+                    if not is_empty:
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=".png"
+                        ) as tmp:
+                            background.save(tmp.name, "PNG")
+                            tmp_path = tmp.name
+                            temp_files.append(tmp_path)
+
+                        canvas_w, canvas_h = img.size
+                        height = (width / canvas_w) * canvas_h
+                        pdf_obj.image(
+                            tmp_path, x=x_pos, y=y_pos, w=width, h=height
+                        )
 
 
         # Unterschriften als Bild über die Linien setzen
