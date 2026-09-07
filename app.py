@@ -162,8 +162,8 @@ with st.container(border=True):
 
 # --- ABSCHNITT 2: RÄUME & ZUSTAND ---
 with st.container(border=True):
-    st.subheader("2. Zustand der Räume")
-    st.write("Erfasse hier den Zustand und eventuelle Mängel pro Raum.")
+    st.subheader("2. Zustand der Räume & Fotos")
+    st.write("Erfasse hier den Zustand, Mängel und optional Fotos pro Raum.")
 
     if "raeume_liste" not in st.session_state:
         st.session_state.raeume_liste = [
@@ -177,7 +177,6 @@ with st.container(border=True):
 
     raeume_daten = []
     
-    # Standard-Räume iterieren
     for raum in st.session_state.raeume_liste:
         st.markdown(f"**{raum}**")
         col_r1, col_r2 = st.columns([1, 2])
@@ -196,12 +195,23 @@ with st.container(border=True):
                 label_visibility="collapsed"
             )
         
+        # Foto-Upload für den jeweiligen Raum
+        raum_foto = st.file_uploader(
+            f"Foto für {raum} hochladen (optional)",
+            type=["png", "jpg", "jpeg"],
+            key=f"foto_{raum}"
+        )
+        
+        if raum_foto is not None:
+            st.image(raum_foto, caption=f"Vorschau: {raum}", width=200)
+
         raeume_daten.append({
             "raum": raum,
             "zustand": zustand,
-            "maengel": maengel
+            "maengel": maengel,
+            "foto": raum_foto
         })
-        st.write("")
+        st.divider()
 
     # Option, eigene Räume hinzuzufügen
     with st.expander("Weiteren Raum hinzufügen"):
@@ -511,10 +521,15 @@ if st.button(
         pdf.cell(0, 6, datum.strftime("%d.%m.%Y"), 0, 1)
         pdf.ln(4)
 
-        # 2. Zustand der Räume
+        # 2. Zustand der Räume & Fotos in PDF einbinden
         pdf.chapter_title("2. Zustand der Räume")
         pdf.set_font("helvetica", size=10)
+        
         for r in raeume_daten:
+            # Sicherheitsprüfung für Seitenumbruch bei vielen Rauminhalten/Fotos
+            if pdf.get_y() > 240:
+                pdf.add_page()
+
             pdf.set_font("helvetica", "B", 10)
             pdf.cell(35, 6, f"{r['raum']}:", 0, 0)
             pdf.set_font("helvetica", "B" if r['zustand'] == "Mängel vorhanden" else "", 10)
@@ -522,7 +537,21 @@ if st.button(
             pdf.set_font("helvetica", size=9)
             maengel_str = f"Mängel: {r['maengel']}" if r['maengel'] else "Keine Mängel"
             pdf.cell(0, 6, maengel_str.encode("latin-1", "replace").decode("latin-1"), 0, 1)
-        pdf.ln(4)
+            
+            # Falls ein Foto hochgeladen wurde, direkt ins PDF einfügen
+            if r['foto'] is not None:
+                try:
+                    img_temp = Image.open(r['foto']).convert("RGB")
+                    tmp_img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg").name
+                    img_temp.save(tmp_img_path)
+                    
+                    pdf.ln(2)
+                    pdf.image(tmp_img_path, x=20, w=60) # Bild mit Breite 60 mm einfügen
+                    pdf.ln(4)
+                except Exception:
+                    pass
+            pdf.ln(2)
+        pdf.ln(2)
 
         # 3. Kaution & Schlüssel
         pdf.chapter_title("3. Kaution & Schlüssel")
