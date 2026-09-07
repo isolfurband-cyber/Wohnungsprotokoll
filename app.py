@@ -415,7 +415,7 @@ if st.button(
             f"{etage.encode('latin-1', 'replace').decode('latin-1')}  |  {quadratmeter} m²",
             0,
             1,
-        )
+        ) prüfen
 
         pdf.set_font("helvetica", size=10)
         pdf.cell(45, 6, "Mieter:", 0, 0)
@@ -547,39 +547,50 @@ if st.button(
             )
         else:
             pdf.cell(0, 5, "Keine", 0, 1)
-        pdf.ln(10)
+        pdf.ln(6)
 
-        # 5. Unterschriften (Bilder einbetten)
+        # Sicherheitsprüfung: Prüfen, ob für die Unterschriften am Ende der Seite noch genug Platz ist (ca. 45 mm)
+        if pdf.get_y() > 235:
+            pdf.add_page()
+
+        # 5. Unterschriften (Sauber und kontrolliert platziert)
         pdf.chapter_title("5. Unterschriften")
         pdf.ln(2)
 
         sig_y = pdf.get_y()
         
-        # Vermieter-Unterschrift zwischenspeichern und einfügen
-        if canvas_vermieter.image_data is not None:
+        # Vermieter-Unterschrift (Bild direkt über der Linie einfügen)
+        if canvas_vermieter.image_data is not None and len(canvas_vermieter.image_data) > 0:
             img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
-            background = Image.new("RGB", img_v.size, (255, 255, 255))
-            background.paste(img_v, mask=img_v.split()[3])
-            tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            background.save(tmp_v.name)
-            pdf.image(tmp_v.name, x=20, y=sig_y, w=75)
+            # Prüfen ob im Canvas überhaupt gezeichnet wurde (nicht komplett leer/transparent)
+            if np.any(img_v.split()[3] > 0):
+                background = Image.new("RGB", img_v.size, (255, 255, 255))
+                background.paste(img_v, mask=img_v.split()[3])
+                tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                background.save(tmp_v.name)
+                # Bild exakt oberhalb der Unterschriftenlinie platzieren
+                pdf.image(tmp_v.name, x=20, y=sig_y + 2, w=75, h=22)
 
-        # Mieter-Unterschrift zwischenspeichern und einfügen
-        if canvas_mieter.image_data is not None:
+        # Mieter-Unterschrift (Bild direkt über der Linie einfügen)
+        if canvas_mieter.image_data is not None and len(canvas_mieter.image_data) > 0:
             img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
-            background_m = Image.new("RGB", img_m.size, (255, 255, 255))
-            background_m.paste(img_m, mask=img_m.split()[3])
-            tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            background_m.save(tmp_m.name)
-            pdf.image(tmp_m.name, x=115, y=sig_y, w=75)
+            if np.any(img_m.split()[3] > 0):
+                background_m = Image.new("RGB", img_m.size, (255, 255, 255))
+                background_m.paste(img_m, mask=img_m.split()[3])
+                tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                background_m.save(tmp_m.name)
+                # Bild exakt oberhalb der Unterschriftenlinie platzieren
+                pdf.image(tmp_m.name, x=115, y=sig_y + 2, w=75, h=22)
 
-        pdf.set_y(sig_y + 35)
+        # Feste Linien und Beschriftungen zeichnen
+        pdf.set_y(sig_y + 24)
         pdf.cell(95, 5, "_" * 35, 0, 0, "L")
         pdf.cell(95, 5, "_" * 35, 0, 1, "L")
+        pdf.set_font("helvetica", "B", 9)
         pdf.cell(95, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
         pdf.cell(95, 5, "Mieter", 0, 1, "L")
 
-        # PDF Ausgabe für Download bereitstellen (modernes fpdf2 gibt direkt bytearray/bytes zurück)
+        # PDF Ausgabe für Download bereitstellen
         pdf_output = bytes(pdf.output())
         st.download_button(
             label="PDF herunterladen",
