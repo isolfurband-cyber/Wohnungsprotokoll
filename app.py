@@ -347,6 +347,7 @@ with st.container(border=True):
             width=280,
             drawing_mode="freedraw",
             key="canvas_vermieter",
+            return_image_data=True,
         )
 
     with col_sig2:
@@ -360,6 +361,7 @@ with st.container(border=True):
             width=280,
             drawing_mode="freedraw",
             key="canvas_mieter",
+            return_image_data=True,
         )
 
 st.write("")
