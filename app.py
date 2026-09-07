@@ -514,6 +514,13 @@ with st.container():
             drawing_mode="freedraw",
             key="canvas_vermieter",
         )
+        if (
+            canvas_vermieter.image_data is not None
+            and np.any(canvas_vermieter.image_data[:, :, 3] > 0)
+        ):
+            st.session_state["saved_vermieter_sig"] = (
+                canvas_vermieter.image_data
+            )
 
     with col_sig2:
         st.write("**Mieter**")
@@ -528,6 +535,11 @@ with st.container():
             drawing_mode="freedraw",
             key="canvas_mieter",
         )
+        if (
+            canvas_mieter.image_data is not None
+            and np.any(canvas_mieter.image_data[:, :, 3] > 0)
+        ):
+            st.session_state["saved_mieter_sig"] = canvas_mieter.image_data
 
 st.write("")
 
@@ -867,39 +879,32 @@ if st.button(
 
         sig_y = pdf.get_y()
 
-        def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-            if isinstance(canvas_result, dict) and "image_data" in canvas_result:
-                img_data = canvas_result["image_data"]
-                if img_data is not None:
-                    img_array = img_data.astype("uint8")
-                    pil_img = Image.fromarray(img_array, mode="RGBA")
-                    extrema = pil_img.getextrema()
-                    if extrema:
-                        background = Image.new(
-                            "RGB", pil_img.size, (255, 255, 255)
-                        )
-                        background.paste(pil_img, mask=pil_img.split()[3])
 
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".png"
-                        ) as tmp:
-                            background.save(tmp.name, "PNG")
-                            tmp_path = tmp.name
-                            temp_files.append(tmp_path)
+        def process_signature_from_state(sig_key, pdf_obj, x_pos, y_pos, width):
+            if sig_key in st.session_state and st.session_state[sig_key] is not None:
+                img_data = st.session_state[sig_key]
+                img_array = img_data.astype("uint8")
+                pil_img = Image.fromarray(img_array, mode="RGBA")
+                background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                background.paste(pil_img, mask=pil_img.split()[3])
 
-                        w_orig, h_orig = background.size
-                        if w_orig > 0:
-                            height = (width / w_orig) * h_orig
-                            pdf_obj.image(
-                                tmp_path,
-                                x=x_pos,
-                                y=y_pos - height + 4,
-                                w=width,
-                                h=height,
-                            )
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ) as tmp:
+                    background.save(tmp.name, "PNG")
+                    tmp_path = tmp.name
+                    temp_files.append(tmp_path)
 
-        process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
-        process_signature(canvas_mieter, pdf, 115, sig_y, 75)
+                w_orig, h_orig = background.size
+                if w_orig > 0:
+                    height = (width / w_orig) * h_orig
+                    pdf_obj.image(
+                        tmp_path, x=x_pos, y=y_pos - height + 4, w=width, h=height
+                    )
+
+
+        process_signature_from_state("saved_vermieter_sig", pdf, 15, sig_y, 75)
+        process_signature_from_state("saved_mieter_sig", pdf, 115, sig_y, 75)
 
         pdf.set_y(sig_y + 8)
         pdf.set_font("helvetica", "B", 9)
