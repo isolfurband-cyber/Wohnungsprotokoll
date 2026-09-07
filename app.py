@@ -145,7 +145,6 @@ default_zaehler = [
 if "zaehler_liste" not in st.session_state:
     st.session_state.zaehler_liste = default_zaehler
 else:
-    # Falls alte Sitzungsdaten im Cache liegen, fehlende Keys ergänzen
     for z in st.session_state.zaehler_liste:
         if "nummer" not in z:
             z["nummer"] = ""
@@ -156,7 +155,7 @@ else:
         if "bezeichnung" not in z:
             z["bezeichnung"] = ""
         if "einheit" not in z:
-            z["einheit"] = "Stk."
+            z["einheit"] = "Units"
 
 # --- ABSCHNITT 1: STAMMDATEN ---
 with st.container():
@@ -473,7 +472,7 @@ with st.container():
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            update_streamlit=True,
+            update_streamlit=False,  # Wichtig: Verhindert den Live-RuntimeError
             height=150,
             width=280,
             drawing_mode="freedraw",
@@ -487,7 +486,7 @@ with st.container():
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            update_streamlit=True,
+            update_streamlit=False,  # Wichtig: Verhindert den Live-RuntimeError
             height=150,
             width=280,
             drawing_mode="freedraw",
