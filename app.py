@@ -472,7 +472,6 @@ with st.container():
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            realtime_update=False,  # Korrigierter Parameter
             height=150,
             width=280,
             drawing_mode="freedraw",
@@ -486,7 +485,6 @@ with st.container():
             stroke_width=3,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            realtime_update=False,  # Korrigierter Parameter
             height=150,
             width=280,
             drawing_mode="freedraw",
