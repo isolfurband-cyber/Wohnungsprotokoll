@@ -492,7 +492,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand": boden_zustand,
+                "boden_zustand":boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -534,6 +534,7 @@ with st.container(border=True):
             height=130,
             width=300,
             drawing_mode="freedraw",
+            update_streamlit=True,
             key="canvas_vermieter",
         )
 
@@ -547,6 +548,7 @@ with st.container(border=True):
             height=130,
             width=300,
             drawing_mode="freedraw",
+            update_streamlit=True,
             key="canvas_mieter",
         )
 
@@ -885,7 +887,6 @@ else:
     if canvas_vermieter.image_data is not None:
         try:
             img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"))
-            # Prüfen ob etwas gezeichnet wurde (nicht rein weiß)
             if img_v.getbbox():
                 sig_v_path = tempfile.NamedTemporaryFile(
                     delete=False, suffix=".png"
