@@ -466,7 +466,7 @@ with st.container():
                 "zustand": zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
-                "boden_belag":boden_belag,
+                "boden_belag": boden_belag,
                 "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -865,53 +865,37 @@ if st.button(
         sig_y = pdf.get_y()
 
 
-        def draw_signature_from_json(canvas_result, pdf_obj, x_pos, y_pos, width):
-            canvas_w, canvas_h = 280, 150
-            sig_img = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
-            draw = ImageDraw.Draw(sig_img)
-
-            has_drawn = False
+        def add_signature_image(canvas_result, pdf_obj, x_pos, y_pos, width):
             if (
-                isinstance(canvas_result, dict)
-                and "json_data" in canvas_result
-                and canvas_result["json_data"]
+                canvas_result is not None
+                and hasattr(canvas_result, "image_data")
+                and canvas_result.image_data is not None
             ):
-                objects = canvas_result["json_data"].get("objects", [])
-                for obj in objects:
-                    if obj.get("type") == "path":
-                        path = obj.get("path", [])
-                        points = []
-                        for cmd in path:
-                            if cmd[0] in ["M", "L"] and len(cmd) >= 3:
-                                points.append((cmd[1], cmd[2]))
-                            elif cmd[0] == "Q" and len(cmd) >= 5:
-                                points.append((cmd[3], cmd[4]))
-                            elif cmd[0] == "C" and len(cmd) >= 7:
-                                points.append((cmd[5], cmd[6]))
+                img_data = canvas_result.image_data
+                img = Image.fromarray(img_data.astype("uint8"), "RGBA")
 
-                        if len(points) > 1:
-                            has_drawn = True
-                            for k in range(len(points) - 1):
-                                draw.line(
-                                    [points[k], points[k + 1]], fill=(0, 0, 0), width=3
-                                )
-                        elif len(points) == 1:
-                            has_drawn = True
-                            draw.point(points[0], fill=(0, 0, 0))
+                # Auf weißem Hintergrund zusammenfügen
+                rgb_img = Image.new("RGB", img.size, (255, 255, 255))
+                rgb_img.paste(img, (0, 0), mask=img.split()[3])
 
-            if has_drawn:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                    sig_img.save(tmp.name, "PNG")
-                    tmp_path = tmp.name
-                    temp_files.append(tmp_path)
+                # Prüfen, ob etwas gezeichnet wurde (nicht reinweiß)
+                arr = np.array(rgb_img)
+                if not np.all(arr >= 250):
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".png"
+                    ) as tmp:
+                        rgb_img.save(tmp.name, "PNG")
+                        tmp_path = tmp.name
+                        temp_files.append(tmp_path)
 
-                height = (width / canvas_w) * canvas_h
-                pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
+                    canvas_w, canvas_h = img.size
+                    height = (width / canvas_w) * canvas_h
+                    pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
 
 
-        # Unterschriften exakt über den Linien platzieren
-        draw_signature_from_json(canvas_vermieter, pdf, 15, sig_y - 12, 75)
-        draw_signature_from_json(canvas_mieter, pdf, 115, sig_y - 12, 75)
+        # Unterschriften als Bild über die Linien setzen
+        add_signature_image(canvas_vermieter, pdf, 15, sig_y - 12, 75)
+        add_signature_image(canvas_mieter, pdf, 115, sig_y - 12, 75)
 
         # Linien und Beschriftungen unter den Unterschriften platzieren
         pdf.set_y(sig_y + 8)
