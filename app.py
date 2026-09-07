@@ -501,7 +501,8 @@ with st.container():
         fill_color="rgba(255, 255, 255, 0)",
         stroke_width=3,
         stroke_color="#000000",
-        background_color="#f0f2f6",
+        background_color="#FFFFFF",
+        realtime_update=True,
         height=150,
         width=280,
         drawing_mode="freedraw",
@@ -514,7 +515,8 @@ with st.container():
         fill_color="rgba(255, 255, 255, 0)",
         stroke_width=3,
         stroke_color="#000000",
-        background_color="#f0f2f6",
+        background_color="#FFFFFF",
+        realtime_update=True,
         height=150,
         width=280,
         drawing_mode="freedraw",
@@ -865,16 +867,16 @@ if st.button(
       ):
         img_data = canvas_result["image_data"]
         if img_data is not None and img_data.size > 0:
-          img = Image.fromarray(img_data.astype("uint8"), mode="RGBA")
-          background = Image.new("RGBA", img.size, (255, 255, 255, 255))
-          combined = Image.alpha_composite(background, img).convert("RGB")
+          img = Image.fromarray(img_data.astype("uint8"), mode="RGBA").convert(
+              "RGB"
+          )
 
           with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            combined.save(tmp.name, "PNG")
+            img.save(tmp.name, "PNG")
             tmp_path = tmp.name
             temp_files.append(tmp_path)
 
-          w_orig, h_orig = combined.size
+          w_orig, h_orig = img.size
           height = (width / w_orig) * h_orig
 
           pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
