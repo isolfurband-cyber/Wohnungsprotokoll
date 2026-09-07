@@ -579,8 +579,8 @@ if st.button(
         pdf.cell(95, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
         pdf.cell(95, 5, "Mieter", 0, 1, "L")
 
-        # PDF Ausgabe für Download bereitstellen
-        pdf_output = pdf.output(dest="S").encode("latin1")
+        # PDF Ausgabe für Download bereitstellen (modernes fpdf2 gibt direkt bytearray/bytes zurück)
+        pdf_output = bytes(pdf.output())
         st.download_button(
             label="PDF herunterladen",
             data=pdf_output,
