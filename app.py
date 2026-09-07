@@ -2,10 +2,8 @@ from datetime import datetime
 import os
 import tempfile
 from fpdf import FPDF
-import numpy as np
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageDraw
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
 
 # 1. Seitenkonfiguration
 st.set_page_config(
@@ -278,20 +276,24 @@ with st.container(border=True):
 
     if "zaehler_liste" not in st.session_state:
         st.session_state.zaehler_liste = [
-            {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
-            {"typ": "Wasser", "bezeichnung": "Wasser Hauptzähler", "einheit": "m³"},
-            {"typ": "Heizung", "bezeichnung": "Heizung", "einheit": "Einheiten"},
+            {"typ": "Kaltwasser", "bezeichnung": "Kaltwasser", "einheit": "m³"},
+            {"typ": "Warmwasser", "bezeichnung": "Warmwasser", "einheit": "m³"},
+            {"typ": "Heizung", "bezeichnung": "Wohnzimmer", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Kinderzimmer", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Flur", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Bad", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Küche", "einheit": "Einheiten"},
         ]
 
     with st.expander("➕ Weiteren Zähler hinzufügen"):
         z_typ = st.selectbox(
             "Zählertyp",
-            ["Strom", "Wasser", "Heizung", "Gas", "Sonstige"],
+            ["Kaltwasser", "Warmwasser", "Heizung", "Strom", "Gas", "Sonstige"],
             key="select_z_typ",
         )
         z_bez = st.text_input("Bezeichnung (z.B. Keller, Küche)", key="neu_zaehler_bez")
         z_einheit = st.text_input(
-            "Maßeinheit (z.B. kWh, m³, Liter)", value="kWh", key="neu_zaehler_einheit"
+            "Maßeinheit (z.B. kWh, m³, Einheiten)", value="m³", key="neu_zaehler_einheit"
         )
         if st.button("Zähler speichern", key="btn_add_z"):
             if z_bez:
@@ -510,39 +512,21 @@ with st.container(border=True):
 
 # --- ABSCHNITT 6: UNTERSCHRIFTEN ---
 with st.container(border=True):
-    st.subheader("✍️ 6. Unterschriften")
+    st.subheader("✍️ 6. Unterschriften & Bestätigung")
     st.write(
-        "Bitte unterschreiben Sie mit dem Finger oder einem Stift direkt im Feld."
+        "Bestätigen Sie die ordnungsgemäße Durchführung der Protokollierung durch Setzen des Hakens."
     )
 
     col_sig1, col_sig2 = st.columns(2)
 
     with col_sig1:
-        st.write("**Vermieter (KARE)**")
-        canvas_vermieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 0)",
-            stroke_width=3,
-            stroke_color="#000000",
-            background_color="#f0f2f6",
-            height=150,
-            width=280,
-            drawing_mode="freedraw",
-            realtime_update=True,
-            key="canvas_vermieter",
+        sig_vermieter = st.checkbox(
+            "✅ Vermieter (KARE-Immobilien) hat unterschrieben", value=True
         )
 
     with col_sig2:
-        st.write("**Mieter**")
-        canvas_mieter = st_canvas(
-            fill_color="rgba(255, 255, 255, 0)",
-            stroke_width=3,
-            stroke_color="#000000",
-            background_color="#f0f2f6",
-            height=150,
-            width=280,
-            drawing_mode="freedraw",
-            realtime_update=True,
-            key="canvas_mieter",
+        sig_mieter = st.checkbox(
+            "✅ Mieter hat unterschrieben", value=True
         )
 
 st.write("")
@@ -715,9 +699,9 @@ else:
     pdf.set_font("helvetica", size=10)
     for z in zaehler_daten:
         pdf.set_font("helvetica", "B", 10)
-        pdf.cell(30, 6, f"{z['typ']}:", 0, 0)
+        pdf.cell(35, 6, f"{z['typ']}:", 0, 0)
         pdf.set_font("helvetica", size=10)
-        pdf.cell(70, 6, f"{z['bezeichnung']} (Nr: {z['nummer']})", 0, 0)
+        pdf.cell(65, 6, f"{z['bezeichnung']} (Nr: {z['nummer']})", 0, 0)
         pdf.set_font("helvetica", "B", 10)
         pdf.cell(
             0,
@@ -867,7 +851,7 @@ else:
     pdf.ln(4)
 
     # 6. Unterschriften im PDF
-    pdf.chapter_title("6. Unterschriften")
+    pdf.chapter_title("6. Unterschriften & Bestätigung")
     pdf.ln(2)
 
     sig_y = pdf.get_y()
@@ -875,36 +859,21 @@ else:
         pdf.add_page()
         sig_y = pdf.get_y()
 
-    v_img_data = (
-        canvas_vermieter.image_data
-        if canvas_vermieter and canvas_vermieter.image_data is not None
-        else None
+    pdf.set_font("helvetica", "B", 10)
+    v_status_text = (
+        "✔ Digital bestätigt durch Vermieter (KARE-Immobilien)"
+        if sig_vermieter
+        else "❌ Nicht bestätigt"
     )
-    m_img_data = (
-        canvas_mieter.image_data
-        if canvas_mieter and canvas_mieter.image_data is not None
-        else None
+    m_status_text = (
+        "✔ Digital bestätigt durch Mieter" if sig_mieter else "❌ Nicht bestätigt"
     )
 
-    if v_img_data is not None:
-        v_img = Image.fromarray(v_img_data.astype("uint8"), mode="RGBA")
-        v_bg = Image.new("RGB", v_img.size, (255, 255, 255))
-        v_bg.paste(v_img, mask=v_img.split()[3])
-        v_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        v_bg.save(v_path)
-        temp_files.append(v_path)
-        pdf.image(v_path, x=15, y=sig_y, w=80)
+    pdf.cell(90, 6, v_status_text, 0, 0, "L")
+    pdf.cell(10, 6, "", 0, 0)
+    pdf.cell(90, 6, m_status_text, 0, 1, "L")
 
-    if m_img_data is not None:
-        m_img = Image.fromarray(m_img_data.astype("uint8"), mode="RGBA")
-        m_bg = Image.new("RGB", m_img.size, (255, 255, 255))
-        m_bg.paste(m_img, mask=m_img.split()[3])
-        m_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        m_bg.save(m_path)
-        temp_files.append(m_path)
-        pdf.image(m_path, x=115, y=sig_y, w=80)
-
-    pdf.set_y(sig_y + 25)
+    pdf.ln(10)
     pdf.set_font("helvetica", "", 9)
     pdf.cell(90, 5, "________________________________________", 0, 0, "L")
     pdf.cell(10, 5, "", 0, 0)
