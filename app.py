@@ -415,7 +415,7 @@ if st.button(
             f"{etage.encode('latin-1', 'replace').decode('latin-1')}  |  {quadratmeter} m²",
             0,
             1,
-        ) prüfen
+        )
 
         pdf.set_font("helvetica", size=10)
         pdf.cell(45, 6, "Mieter:", 0, 0)
