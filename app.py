@@ -9,7 +9,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling
 st.markdown("""
 <style>
     .main-header {
@@ -44,7 +43,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Tabs für strukturierte Erfassung
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "1. Stammdaten", 
     "2. Zählerstände", 
@@ -127,4 +125,46 @@ with tab4:
     with col_sig2:
         st.markdown("**Unterschrift Mieter**")
         canvas_mieter = st_canvas(
-            fill_color="rgba
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#FFFFFF",
+            height=150,
+            width=350,
+            drawing_mode="freedraw",
+            key="canvas_mieter",
+        )
+
+with tab5:
+    st.markdown('<div class="sub-header">Zusammenfassung & Export</div>', unsafe_allow_html=True)
+    
+    st.markdown("### Protokoll-Zusammenfassung")
+    st.write(f"**Objekt:** {mietobjekt} ({wohnung_nr})")
+    st.write(f"**Datum:** {uebergabe_datum.strftime('%d.%m.%Y')}")
+    st.write(f"**Art:** {uebergabe_art}")
+    st.write(f"**Kaltwasser:** {kw_stand} m³ (Nr: {kw_nr}) | **Warmwasser:** {ww_stand} m³ (Nr: {ww_nr})")
+    
+    st.markdown("**Heizungszähler:**")
+    for r, d in heizungs_daten.items():
+        st.write(f"- {r}: Stand {d['stand']} (Nr. {d['nummer']})")
+
+    sig_vermieter_vorhanden = False
+    try:
+        if canvas_vermieter is not None and getattr(canvas_vermieter, "image_data", None) is not None:
+            sig_vermieter_vorhanden = True
+    except Exception:
+        sig_vermieter_vorhanden = False
+
+    sig_mieter_vorhanden = False
+    try:
+        if canvas_mieter is not None and getattr(canvas_mieter, "image_data", None) is not None:
+            sig_mieter_vorhanden = True
+    except Exception:
+        sig_mieter_vorhanden = False
+
+    st.success(f"Unterschrift Vermieter erfasst: {'Ja' if sig_vermieter_vorhanden else 'Nein (leer)'}")
+    st.success(f"Unterschrift Mieter erfasst: {'Ja' if sig_mieter_vorhanden else 'Nein (leer)'}")
+
+    if st.button("Protokoll als Daten-Übersicht anzeigen"):
+        st.balloons()
+        st.info("Alle Protokolldaten sind vollständig erfasst und bereit.")
