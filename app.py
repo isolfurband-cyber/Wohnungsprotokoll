@@ -849,7 +849,7 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-      # 6. Unterschriften
+# 6. Unterschriften
         if pdf.get_y() > 210:
             pdf.add_page()
 
@@ -868,21 +868,34 @@ if st.button(
         sig_y = pdf.get_y()
 
         def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-            if isinstance(canvas_result, dict) and canvas_result.get("image_data") is not None:
-                img_data = canvas_result["image_data"]
-                # Prüfen ob Daten da sind und das Array die richtige Form hat
-                if img_data.size > 0:
-                    img_array = img_data.astype("uint8")
-                    pil_img = Image.fromarray(img_array, mode="RGBA")
+            if isinstance(canvas_result, dict) and canvas_result.get("data_url") is not None:
+                import base64
+                import io
+                
+                data_url = canvas_result["data_url"]
+                if "," in data_url:
+                    header, encoded = data_url.split(",", 1)
+                    binary_data = base64.b64decode(encoded)
                     
-                    # Ein weißes Hintergrundbild erzeugen und die Unterschrift darüberlegen
-                    background = Image.new("RGB", pil_img.size, (255, 255, 255))
-                    background.paste(pil_img, mask=pil_img.split()[3])
+                    pil_img = Image.open(io.BytesIO(binary_data))
                     
-                    # Prüfen, ob tatsächlich etwas gezeichnet wurde (nicht nur ein komplett weißes Canvas)
-                    # Wir konvertieren zu Graustufen und suchen nach dunklen Pixeln (< 200)
-                    np_check = np.array(pil_img)
-                    if np.any(np_check[:, :, 3] > 0): # Wenn Alpha-Kanal aktiv gezeichnet wurde
+                    # Prüfen ob tatsächlich etwas gezeichnet wurde (nicht komplett transparent/leer)
+                    extrema = pil_img.getextrema()
+                    # Wenn der Alpha-Kanal nicht nur 0 ist, wurde gezeichnet
+                    if pil_img.mode == "RGBA":
+                        alpha = pil_img.split()[3]
+                        has_drawing = any(pixel > 0 for pixel in alpha.getdata())
+                    else:
+                        has_drawing = True
+
+                    if has_drawing:
+                        # Weißen Hintergrund unterlegen
+                        background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                        if pil_img.mode == "RGBA":
+                            background.paste(pil_img, mask=pil_img.split()[3])
+                        else:
+                            background.paste(pil_img)
+
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                             background.save(tmp.name, "PNG")
                             tmp_path = tmp.name
@@ -891,7 +904,6 @@ if st.button(
                         w_orig, h_orig = background.size
                         if w_orig > 0:
                             height = (width / w_orig) * h_orig
-                            # Bild direkt über der Unterschriftslinie platzieren
                             pdf_obj.image(
                                 tmp_path,
                                 x=x_pos,
