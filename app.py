@@ -245,7 +245,9 @@ with st.container(border=True):
     with st.expander("➕ Weitere Schlüssel hinzufügen"):
         col_ns1, col_ns2, col_ns3 = st.columns([2, 1, 1])
         with col_ns1:
-            ns_bez = st.text_input("Bezeichnung (z.B. Dachboden, Garage)", key="ns_bez_input")
+            ns_bez = st.text_input(
+                "Bezeichnung (z.B. Dachboden, Garage)", key="ns_bez_input"
+            )
         with col_ns2:
             ns_anzahl = st.number_input(
                 "Anzahl", min_value=1, value=1, step=1, key="ns_anz"
@@ -293,7 +295,9 @@ with st.container(border=True):
         )
         z_bez = st.text_input("Bezeichnung (z.B. Keller, Küche)", key="neu_zaehler_bez")
         z_einheit = st.text_input(
-            "Maßeinheit (z.B. kWh, m³, Einheiten)", value="m³", key="neu_zaehler_einheit"
+            "Maßeinheit (z.B. kWh, m³, Einheiten)",
+            value="m³",
+            key="neu_zaehler_einheit",
         )
         if st.button("Zähler speichern", key="btn_add_z"):
             if z_bez:
@@ -525,9 +529,7 @@ with st.container(border=True):
         )
 
     with col_sig2:
-        sig_mieter = st.checkbox(
-            "✅ Mieter hat unterschrieben", value=True
-        )
+        sig_mieter = st.checkbox("✅ Mieter hat unterschrieben", value=True)
 
 st.write("")
 
@@ -850,7 +852,7 @@ else:
         pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
     pdf.ln(4)
 
-    # 6. Unterschriften im PDF
+    # 6. Unterschriften im PDF (Hier wurde das Unicode-Häkchen durch "[X]" ersetzt)
     pdf.chapter_title("6. Unterschriften & Bestätigung")
     pdf.ln(2)
 
@@ -861,12 +863,14 @@ else:
 
     pdf.set_font("helvetica", "B", 10)
     v_status_text = (
-        "✔ Digital bestätigt durch Vermieter (KARE-Immobilien)"
+        "[X] Digital bestaetigt durch Vermieter (KARE-Immobilien)"
         if sig_vermieter
-        else "❌ Nicht bestätigt"
+        else "[ ] Nicht bestaetigt"
     )
     m_status_text = (
-        "✔ Digital bestätigt durch Mieter" if sig_mieter else "❌ Nicht bestätigt"
+        "[X] Digital bestaetigt durch Mieter"
+        if sig_mieter
+        else "[ ] Nicht bestaetigt"
     )
 
     pdf.cell(90, 6, v_status_text, 0, 0, "L")
