@@ -1,7 +1,7 @@
 import tempfile
 from datetime import datetime
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from fpdf import FPDF
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
@@ -359,51 +359,90 @@ if st.button("📄 PDF-Protokoll generieren", type="primary"):
 
         sig_y = pdf.get_y()
 
-        # Vermieter Unterschrift
-        try:
-            if (
-                canvas_vermieter_result is not None
-                and canvas_vermieter_result.image_data is not None
-            ):
-                img_data_v = canvas_vermieter_result.image_data
-                if img_data_v.shape[0] > 0 and img_data_v.shape[1] > 0:
-                    img_v = Image.fromarray(
-                        img_data_v.astype("uint8"), mode="RGBA"
-                    )
-                    bg = Image.new("RGBA", img_v.size, (255, 255, 255, 255))
-                    img_v = Image.alpha_composite(bg, img_v).convert("RGB")
 
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png"
-                    ) as tmp_sig_v:
-                        img_v.save(tmp_sig_v.name)
-                        temp_files.append(tmp_sig_v.name)
-                        pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
-        except Exception as e:
-            print(f"Fehler Vermieter-Unterschrift: {e}")
+        def canvas_to_image(canvas_result):
+            try:
+                if (
+                    canvas_result is not None
+                    and "json_data" in canvas_result
+                    and canvas_result["json_data"] is not None
+                ):
+                    objects = canvas_result["json_data"].get("objects", [])
+                    if len(objects) > 0:
+                        sig_img = Image.new("RGB", (280, 150), (255, 255, 255))
+                        draw = ImageDraw.Draw(sig_img)
 
-        # Mieter Unterschrift
-        try:
-            if (
-                canvas_mieter_result is not None
-                and canvas_mieter_result.image_data is not None
-            ):
-                img_data_m = canvas_mieter_result.image_data
-                if img_data_m.shape[0] > 0 and img_data_m.shape[1] > 0:
-                    img_m = Image.fromarray(
-                        img_data_m.astype("uint8"), mode="RGBA"
-                    )
-                    bg = Image.new("RGBA", img_m.size, (255, 255, 255, 255))
-                    img_m = Image.alpha_composite(bg, img_m).convert("RGB")
+                        for obj in objects:
+                            if obj.get("type") == "path":
+                                path = obj.get("path", [])
+                                points = []
+                                for cmd in path:
+                                    if (
+                                        len(cmd) >= 3
+                                        and cmd[0] in ["M", "L", "Q", "C"]
+                                    ):
+                                        points.append((cmd[-2], cmd[-1]))
 
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png"
-                    ) as tmp_sig_m:
-                        img_m.save(tmp_sig_m.name)
-                        temp_files.append(tmp_sig_m.name)
-                        pdf.image(tmp_sig_m.name, x=115, y=sig_y, w=80)
-        except Exception as e:
-            print(f"Fehler Mieter-Unterschrift: {e}")
+                                if len(points) > 1:
+                                    left = obj.get("left", 0)
+                                    top = obj.get("top", 0)
+                                    scale_x = obj.get("scaleX", 1)
+                                    scale_y = obj.get("scaleY", 1)
+
+                                    adjusted_points = [
+                                        (
+                                            (p[0] * scale_x) + left,
+                                            (p[1] * scale_y) + top,
+                                        )
+                                        for p in points
+                                    ]
+                                    for i in range(len(adjusted_points) - 1):
+                                        draw.line(
+                                            [
+                                                adjusted_points[i],
+                                                adjusted_points[i + 1],
+                                            ],
+                                            fill="black",
+                                            width=3,
+                                        )
+                        return sig_img
+
+                if (
+                    canvas_result is not None
+                    and hasattr(canvas_result, "image_data")
+                    and canvas_result.image_data is not None
+                ):
+                    img_data = canvas_result.image_data
+                    if img_data.shape[0] > 0 and img_data.shape[1] > 0:
+                        img = Image.fromarray(
+                            img_data.astype("uint8"), mode="RGBA"
+                        )
+                        bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+                        return Image.alpha_composite(bg, img).convert("RGB")
+            except Exception as ex:
+                print(f"Canvas Verarbeitungsfehler: {ex}")
+            return None
+
+
+        # Vermieter Unterschrift einfügen
+        img_v = canvas_to_image(canvas_vermieter_result)
+        if img_v:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".png"
+            ) as tmp_sig_v:
+                img_v.save(tmp_sig_v.name)
+                temp_files.append(tmp_sig_v.name)
+                pdf.image(tmp_sig_v.name, x=15, y=sig_y, w=80)
+
+        # Mieter Unterschrift einfügen
+        img_m = canvas_to_image(canvas_mieter_result)
+        if img_m:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".png"
+            ) as tmp_sig_m:
+                img_m.save(tmp_sig_m.name)
+                temp_files.append(tmp_sig_m.name)
+                pdf.image(tmp_sig_m.name, x=115, y=sig_y, w=80)
 
         pdf.set_y(sig_y + 35)
         pdf.set_font("helvetica", "", 9)
@@ -452,7 +491,6 @@ if st.button("📄 PDF-Protokoll generieren", type="primary"):
         )
 
     finally:
-        # Aufräumen von temporären Dateien
         for tf in temp_files:
             try:
                 import os
