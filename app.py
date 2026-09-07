@@ -166,17 +166,17 @@ elif current_step == "3. Raum-Check & Mängel":
     for raum in d["raeume"]:
         with st.expander(f"📍 Raum: {raum}", expanded=False):
             if raum not in d["maengel"]:
-                d["maengel][raum] = {"zustand": "Einwandfrei", "beschreibung": "", "sperrmuell": False}
+                d["maengel"][raum] = {"zustand": "Einwandfrei", "beschreibung": "", "sperrmuell": False}
             
             d["maengel"][raum]["zustand"] = st.selectbox(
                 f"Zustand {raum}", 
                 ["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"],
-                index=["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"].index(d["maengel][raum]["zustand"]) if d["maengel][raum]["zustand"] in ["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"] else 0,
+                index=["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"].index(d["maengel"][raum]["zustand"]) if d["maengel"][raum]["zustand"] in ["Einwandfrei", "Gebrauchsspuren", "Mängel vorhanden", "Renovierungsbedürftig"] else 0,
                 key=f"zustand_{raum}"
             )
             d["maengel"][raum]["beschreibung"] = st.text_area(
                 f"Beschreibung von Mängeln / Besonderheiten in {raum}",
-                value=d["maengel][raum]["beschreibung"],
+                value=d["maengel"][raum]["beschreibung"],
                 key=f"desc_{raum}"
             )
 
