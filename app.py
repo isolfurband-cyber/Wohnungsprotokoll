@@ -563,7 +563,7 @@ if st.button(
         if canvas_vermieter.image_data is not None and len(canvas_vermieter.image_data) > 0:
             img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"), mode="RGBA")
             # Prüfen ob im Canvas überhaupt gezeichnet wurde (nicht komplett leer/transparent)
-            if np.any(img_v.split()[3] > 0):
+            if np.any(np.array(img_v.split()[3]) > 0):
                 background = Image.new("RGB", img_v.size, (255, 255, 255))
                 background.paste(img_v, mask=img_v.split()[3])
                 tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
@@ -574,7 +574,7 @@ if st.button(
         # Mieter-Unterschrift (Bild direkt über der Linie einfügen)
         if canvas_mieter.image_data is not None and len(canvas_mieter.image_data) > 0:
             img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"), mode="RGBA")
-            if np.any(img_m.split()[3] > 0):
+            if np.any(np.array(img_m.split()[3]) > 0):
                 background_m = Image.new("RGB", img_m.size, (255, 255, 255))
                 background_m.paste(img_m, mask=img_m.split()[3])
                 tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
