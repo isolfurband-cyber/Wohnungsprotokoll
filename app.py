@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
-# 1. Seitenkonfiguration (Muss ganz am Anfang stehen)
+# 1. Seitenkonfiguration
 st.set_page_config(
     page_title="Wohnungsabnahme", page_icon="🏠", layout="centered"
 )
@@ -34,7 +34,6 @@ st.markdown(
 )
 
 
-# Hilfsfunktion für abgerundete Ecken am Logo
 def add_rounded_corners(image_path, radius=20):
   img = Image.open(image_path).convert("RGBA")
   mask = Image.new("L", img.size, 0)
@@ -45,7 +44,6 @@ def add_rounded_corners(image_path, radius=20):
   return rounded_img
 
 
-# 3. Klasse für das PDF-Layout mit grünem Rahmen
 class ModernPDF(FPDF):
 
   def draw_page_border(self):
@@ -468,7 +466,7 @@ with st.container():
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
           "boden_belag": boden_belag,
-          "boden_zustand": boden_zustand,
+          "boden_zustand":boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
           "schadstellen_ja": schadstellen_ja,
@@ -861,42 +859,23 @@ if st.button(
 
 
     def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-      try:
-        if (
-            isinstance(canvas_result, dict)
-            and canvas_result.get("image_data") is not None
-        ):
-          img_data = np.array(canvas_result["image_data"], dtype=np.uint8)
-          if img_data.size > 0:
-            img = Image.fromarray(img_data).convert("RGBA")
-            arr = np.array(img)
-            bg_color = np.array([240, 242, 246, 255], dtype=np.uint8)
-            diff = np.abs(arr.astype(int) - bg_color.astype(int))
+      if (
+          isinstance(canvas_result, dict)
+          and canvas_result.get("image_data") is not None
+      ):
+        img_data = canvas_result["image_data"]
+        if img_data is not None and len(img_data) > 0:
+          img = (
+              Image.fromarray(img_data.astype("uint8"), mode="RGBA")
+              .convert("RGB")
+          )
 
-            if np.any(diff > 20):
-              datas = img.getdata()
-              new_data = []
-              for item in datas:
-                if (
-                    abs(item[0] - 240) < 15
-                    and abs(item[1] - 242) < 15
-                    and abs(item[2] - 246) < 15
-                ):
-                  new_data.append((255, 255, 255, 0))
-                else:
-                  new_data.append(item)
-              img.putdata(new_data)
+          with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+            img.save(tmp.name, "JPEG", quality=95)
+            tmp_path = tmp.name
+            temp_files.append(tmp_path)
 
-              with tempfile.NamedTemporaryFile(
-                  delete=False, suffix=".png"
-              ) as tmp_sig:
-                img.save(tmp_sig.name, "PNG")
-                tmp_sig_path = tmp_sig.name
-                temp_files.append(tmp_sig_path)
-
-              pdf_obj.image(tmp_sig_path, x=x_pos, y=y_pos, w=width)
-      except Exception:
-        pass
+          pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width)
 
 
     process_signature(canvas_vermieter, pdf, 15, sig_y, 75)
