@@ -2,4 +2,4 @@ streamlit
 streamlit-drawable-canvas
 pillow
 numpy
-weasyprint
+fpdf2
