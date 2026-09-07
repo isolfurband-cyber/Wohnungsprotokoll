@@ -476,7 +476,7 @@ with st.container(border=True):
           "zustand": zustand,
           "waende_dechen": waende_dechen,
           "duebelloecher": duebelloecher,
-          "boden_belag": boden_belag,
+          "boden_belag":boden_belag,
           "boden_zustand": boden_zustand,
           "fliesen_gerissen_ja": fliesen_gerissen_ja,
           "fliesen_anzahl_risse": fliesen_anzahl_risse,
@@ -528,7 +528,7 @@ with st.container(border=True):
         fill_color="rgba(255, 255, 255, 0)",
         stroke_width=3,
         stroke_color="#000000",
-        background_color="#f0f2f6",
+        background_color="#000000",
         height=150,
         width=280,
         drawing_mode="freedraw",
@@ -879,40 +879,43 @@ if st.button(
     sig_y = pdf.get_y()
 
 
-    # Robuste Funktion zur Prüfung und Verarbeitung der Unterschrift
+    # Korrigierte Funktion mit korrektem Dictionary-Zugriff für st_canvas
     def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
       try:
-        if canvas_result.image_data is not None:
-          img_data = canvas_result.image_data.astype(np.uint8)
-          img = Image.fromarray(img_data).convert("RGBA")
+        if (
+            isinstance(canvas_result, dict)
+            and canvas_result.get("image_data") is not None
+        ):
+          img_data = np.array(canvas_result["image_data"], dtype=np.uint8)
+          if img_data.size > 0:
+            img = Image.fromarray(img_data).convert("RGBA")
 
-          # Prüfen, ob gezeichnet wurde (Abgleich mit Hintergrund #f0f2f6)
-          arr = np.array(img)
-          bg_color = np.array([240, 242, 246, 255], dtype=np.uint8)
-          diff = np.abs(arr.astype(int) - bg_color.astype(int))
+            arr = np.array(img)
+            bg_color = np.array([240, 242, 246, 255], dtype=np.uint8)
+            diff = np.abs(arr.astype(int) - bg_color.astype(int))
 
-          if np.any(diff > 20):
-            datas = img.getdata()
-            new_data = []
-            for item in datas:
-              if (
-                  abs(item[0] - 240) < 15
-                  and abs(item[1] - 242) < 15
-                  and abs(item[2] - 246) < 15
-              ):
-                new_data.append((255, 255, 255, 0))
-              else:
-                new_data.append(item)
-            img.putdata(new_data)
+            if np.any(diff > 20):
+              datas = img.getdata()
+              new_data = []
+              for item in datas:
+                if (
+                    abs(item[0] - 240) < 15
+                    and abs(item[1] - 242) < 15
+                    and abs(item[2] - 246) < 15
+                ):
+                  new_data.append((255, 255, 255, 0))
+                else:
+                  new_data.append(item)
+              img.putdata(new_data)
 
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".png"
-            ) as tmp_sig:
-              img.save(tmp_sig.name, "PNG")
-              tmp_sig_path = tmp_sig.name
-              temp_files.append(tmp_sig_path)
+              with tempfile.NamedTemporaryFile(
+                  delete=False, suffix=".png"
+              ) as tmp_sig:
+                img.save(tmp_sig.name, "PNG")
+                tmp_sig_path = tmp_sig.name
+                temp_files.append(tmp_sig_path)
 
-            pdf_obj.image(tmp_sig_path, x=x_pos, y=y_pos, w=width)
+              pdf_obj.image(tmp_sig_path, x=x_pos, y=y_pos, w=width)
       except Exception:
         pass
 
