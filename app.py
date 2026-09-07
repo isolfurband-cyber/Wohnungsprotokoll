@@ -492,7 +492,7 @@ with st.container(border=True):
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
                 "boden_belag": boden_belag,
-                "boden_zustand":boden_zustand,
+                "boden_zustand": boden_zustand,
                 "fliesen_gerissen_ja": fliesen_gerissen_ja,
                 "fliesen_anzahl_risse": fliesen_anzahl_risse,
                 "schadstellen_ja": schadstellen_ja,
@@ -882,11 +882,16 @@ else:
         pdf.add_page()
         sig_y = pdf.get_y()
 
-    # Unterschriftenbilder temporär sichern und einbetten, falls vorhanden
+    # SICHERE ABFRAGE DES CANVAS-INHALTS (Verhindert den RuntimeError)
     sig_v_path = None
-    if canvas_vermieter.image_data is not None:
+    if (
+        isinstance(canvas_vermieter, dict)
+        and canvas_vermieter.get("image_data") is not None
+    ):
         try:
-            img_v = Image.fromarray(canvas_vermieter.image_data.astype("uint8"))
+            img_v = Image.fromarray(
+                canvas_vermieter["image_data"].astype("uint8")
+            )
             if img_v.getbbox():
                 sig_v_path = tempfile.NamedTemporaryFile(
                     delete=False, suffix=".png"
@@ -897,9 +902,14 @@ else:
             pass
 
     sig_m_path = None
-    if canvas_mieter.image_data is not None:
+    if (
+        isinstance(canvas_mieter, dict)
+        and canvas_mieter.get("image_data") is not None
+    ):
         try:
-            img_m = Image.fromarray(canvas_mieter.image_data.astype("uint8"))
+            img_m = Image.fromarray(
+                canvas_mieter["image_data"].astype("uint8")
+            )
             if img_m.getbbox():
                 sig_m_path = tempfile.NamedTemporaryFile(
                     delete=False, suffix=".png"
