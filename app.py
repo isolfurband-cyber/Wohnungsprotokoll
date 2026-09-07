@@ -430,7 +430,7 @@ with st.container():
 
             zustaende[raum] = {
                 "zustand": zustand,
-                "boden_belag":boden_belag,
+                "boden_belag": boden_belag,
                 "boden_zustand": boden_zustand,
                 "waende_dechen": waende_dechen,
                 "duebelloecher": duebelloecher,
@@ -810,7 +810,7 @@ if st.button(
             pdf.cell(0, 5, "Keine weiteren Bemerkungen.", 0, 1)
         pdf.ln(4)
 
-        # 6. Unterschriften (PDF-Ausgabe mit sicherem Try-Except Block)
+        # 6. Unterschriften
         if pdf.get_y() > 210:
             pdf.add_page()
 
@@ -899,7 +899,12 @@ if st.button(
             "L",
         )
 
-        pdf_output = pdf.output(dest="S").encode("latin1")
+        # Kompatibler Aufruf für moderne fpdf2-Versionen
+        pdf_output = pdf.output()
+        if isinstance(pdf_output, str):
+            pdf_output = pdf_output.encode("latin1")
+        elif isinstance(pdf_output, bytearray):
+            pdf_output = bytes(pdf_output)
 
         st.download_button(
             label="📥 PDF herunterladen",
