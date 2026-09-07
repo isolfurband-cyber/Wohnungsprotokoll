@@ -861,33 +861,33 @@ if st.button(
 
 
     def process_signature(canvas_result, pdf_obj, x_pos, y_pos, width):
-      if (
-          isinstance(canvas_result, dict)
-          and canvas_result.get("image_data") is not None
-      ):
+      if isinstance(canvas_result, dict) and "image_data" in canvas_result:
         img_data = canvas_result["image_data"]
-        if img_data is not None and img_data.size > 0:
-          img = Image.fromarray(img_data.astype("uint8"), mode="RGBA").convert(
-              "RGB"
-          )
+        if img_data is not None and np.any(img_data > 0):
+          img_array = img_data.astype("uint8")
+          pil_img = Image.fromarray(img_array, mode="RGBA")
+
+          # Weißer Hintergrund, damit die Transparenz im PDF nicht unsichtbar wird
+          background = Image.new("RGB", pil_img.size, (255, 255, 255))
+          background.paste(pil_img, mask=pil_img.split()[3])
 
           with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            img.save(tmp.name, "PNG")
+            background.save(tmp.name, "PNG")
             tmp_path = tmp.name
             temp_files.append(tmp_path)
 
-          w_orig, h_orig = img.size
+          w_orig, h_orig = background.size
           height = (width / w_orig) * h_orig
 
           pdf_obj.image(tmp_path, x=x_pos, y=y_pos, w=width, h=height)
 
 
-    # Unterschriften auf das Dokument zeichnen
-    process_signature(canvas_vermieter, pdf, 15, sig_y + 2, 75)
-    process_signature(canvas_mieter, pdf, 115, sig_y + 2, 75)
+    # Unterschriften exakt über den Linien platzieren
+    process_signature(canvas_vermieter, pdf, 15, sig_y - 12, 75)
+    process_signature(canvas_mieter, pdf, 115, sig_y - 12, 75)
 
     # Linien und Beschriftungen unter den Unterschriften platzieren
-    pdf.set_y(sig_y + 22)
+    pdf.set_y(sig_y + 8)
     pdf.set_font("helvetica", "B", 9)
     pdf.set_text_color(51, 65, 85)
     pdf.cell(95, 5, "________________________________________", 0, 0)
