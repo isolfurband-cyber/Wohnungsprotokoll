@@ -68,6 +68,7 @@ class ModernPDF(FPDF):
 st.title("🏠 KARE-Immobilien Protokoll-Generator")
 st.write("Erstelle rechtssichere Wohnungsabnahme- und Übergabeprotokolle mit digitaler Unterschrift.")
 
+# Protokoll-Art Auswahl wiederhergestellt
 protokoll_typ = st.selectbox(
     "Protokoll-Art wählen",
     ["Wohnungsübergabeprotokoll (Einzug)", "Wohnungsabnahmeprotokoll (Auszug)", "Zwischenprotokoll"]
