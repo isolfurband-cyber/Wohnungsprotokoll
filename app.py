@@ -926,7 +926,7 @@ if st.button(
         pdf.cell(75, 5, "Mieter", 0, 1, "L")
 
         # PDF im Speicher erzeugen und als Download anbieten
-        pdf_output = pdf.output(dest="S").encode("latin1")
+        pdf_output = pdf.output()
         st.download_button(
             label="📥 PDF-Protokoll jetzt herunterladen",
             data=pdf_output,
