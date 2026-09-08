@@ -1,5 +1,5 @@
 streamlit
-streamlit-drawable-canvas
-pillow
-numpy
 fpdf2
+streamlit-drawable-canvas
+numpy
+pillow
