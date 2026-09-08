@@ -266,9 +266,11 @@ with st.container():
             {"typ": "Strom", "bezeichnung": "Strom Hauptzähler", "einheit": "kWh"},
             {"typ": "Wasser", "bezeichnung": "Kaltwasserzähler", "einheit": "m³"},
             {"typ": "Wasser", "bezeichnung": "Warmwasserzähler", "einheit": "m³"},
-            {"typ": "Heizung", "bezeichnung": "Heizung 1", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung 2", "einheit": "Einheiten"},
-            {"typ": "Heizung", "bezeichnung": "Heizung 3", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung Wohnzimmer", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung Kinderzimmer", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung Flur", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung Bad", "einheit": "Einheiten"},
+            {"typ": "Heizung", "bezeichnung": "Heizung Küche", "einheit": "Einheiten"},
         ]
 
     with st.expander("➕ Weiteren Zähler hinzufügen"):
@@ -505,7 +507,7 @@ with st.container():
     col_sig1, col_sig2 = st.columns(2)
 
     with col_sig1:
-        st.write("**Vermieter (KARE)**")
+        st.write("**Vermieter (KARE-Immobilien)**")
         canvas_vermieter = st_canvas(
             fill_color="rgba(255, 255, 255, 0)",
             stroke_width=3,
@@ -886,7 +888,10 @@ if st.button(
 
         # Y-Position für die Unterschriftslinie festlegen
         line_y = pdf.get_y()
-
+        
+        # Unterschriftslinien zeichnen
+        pdf.line(15, line_y, 90, line_y)
+        pdf.line(115, line_y, 190, line_y)
 
         def process_signature_from_state(sig_key, pdf_obj, x_pos, y_pos, width):
             if sig_key in st.session_state and st.session_state[sig_key] is not None:
@@ -910,43 +915,30 @@ if st.button(
                         tmp_path, x=x_pos, y=y_pos - height - 2, w=width, h=height
                     )
 
-
         process_signature_from_state("saved_vermieter_sig", pdf, 15, line_y, 75)
         process_signature_from_state("saved_mieter_sig", pdf, 115, line_y, 75)
 
-        pdf.set_xy(15, line_y)
+        pdf.set_xy(15, line_y + 2)
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(51, 65, 85)
-        pdf.cell(95, 5, "________________________________________", 0, 0)
-        pdf.cell(95, 5, "________________________________________", 0, 1)
+        pdf.cell(75, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
+        pdf.set_xy(115, line_y + 2)
+        pdf.cell(75, 5, "Mieter", 0, 1, "L")
 
-        pdf.set_xy(15, line_y + 5)
-        pdf.set_font("helvetica", size=9)
-        pdf.cell(
-            95, 5, "Unterschrift Vermieter (KARE-Immobilien)", 0, 0
-        )
-        pdf.cell(95, 5, "Unterschrift Mieter", 0, 1)
-
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".pdf"
-        ) as tmp_file:
-            pdf.output(tmp_file.name)
-            tmp_pdf_path = tmp_file.name
-            temp_files.append(tmp_pdf_path)
-
-        with open(tmp_pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-
+        # PDF im Speicher erzeugen und als Download anbieten
+        pdf_output = pdf.output(dest="S").encode("latin1")
         st.download_button(
-            label="📥 Protokoll generieren & herunterladen",
-            data=pdf_bytes,
-            file_name=f"{protokoll_typ}_{mieter.replace(' ', '_')}.pdf",
+            label="📥 PDF-Protokoll jetzt herunterladen",
+            data=pdf_output,
+            file_name=f"Protokoll_{wohnung.replace(' ', '_')}.pdf",
             mime="application/pdf",
-            use_container_width=True,
+            type="primary",
+            use_container_width=True
         )
 
-        for t_file in temp_files:
+        # Temporäre Dateien aufräumen
+        for tf in temp_files:
             try:
-                os.remove(t_file)
+                os.remove(tf)
             except Exception:
                 pass
