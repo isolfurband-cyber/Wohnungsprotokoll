@@ -129,6 +129,7 @@ with st.container():
     with col1:
         wohnung = st.text_input("Adresse der Wohnung (Straße, Hausnr.)")
         ort = st.text_input("Ort, PLZ")
+        mieter = st.text_input("Name des Mieters")
         mietbeginn = st.date_input("Mietbeginn", key="mietbeginn_datum")
 
         mietende = None
@@ -142,39 +143,6 @@ with st.container():
             "Wohnfläche (m²)", value=0.0, format="%.2f", step=1.0
         )
         datum = st.date_input("Datum der Begehung/Übergabe", key="begehung_datum")
-
-    st.write("")
-    st.write("**Mieter-Verwaltung**")
-    
-    if "mieter_liste" not in st.session_state:
-        st.session_state.mieter_liste = [{"name": "", "email": ""}]
-
-    with st.expander("👥 Mieter hinzufügen / bearbeiten", expanded=True):
-        for idx, m_item in enumerate(st.session_state.mieter_liste):
-            col_m1, col_m2, col_m3 = st.columns([3, 3, 1])
-            with col_m1:
-                st.session_state.mieter_liste[idx]["name"] = st.text_input(
-                    f"Name des Mieters {idx + 1}",
-                    value=m_item["name"],
-                    key=f"mieter_name_{idx}"
-                )
-            with col_m2:
-                st.session_state.mieter_liste[idx]["email"] = st.text_input(
-                    f"E-Mail (optional) {idx + 1}",
-                    value=m_item["email"],
-                    key=f"mieter_email_{idx}"
-                )
-            with col_m3:
-                st.write("")
-                st.write("")
-                if len(st.session_state.mieter_liste) > 1:
-                    if st.button("❌", key=f"del_mieter_{idx}", use_container_width=True):
-                        st.session_state.mieter_liste.pop(idx)
-                        st.rerun()
-
-        if st.button("➕ Weiteren Mieter hinzufügen"):
-            st.session_state.mieter_liste.append({"name": "", "email": ""})
-            st.rerun()
 
     neue_adresse_mieter = ""
     if protokoll_typ == "Wohnungsabnahmeprotokoll":
@@ -588,11 +556,8 @@ if st.button(
     type="primary",
     use_container_width=True,
 ):
-    # Validierung: Prüfen ob mindestens ein Hauptmieter einen Namen hat
-    giltige_mieter = [m for m in st.session_state.mieter_liste if m["name"].strip() != ""]
-    
-    if not wohnung or not giltige_mieter:
-        st.error("Bitte fülle mindestens die Adresse und den Namen von mindestens einem Mieter aus!")
+    if not wohnung or not mieter:
+        st.error("Bitte fülle mindestens die Adresse und den Namen des Mieters aus!")
     else:
         st.success(
             "Protokoll wurde erfolgreich erstellt! Der Download startet gleich."
@@ -637,16 +602,7 @@ if st.button(
         pdf.set_font("helvetica", size=10)
         pdf.cell(45, 6, "Mieter:", 0, 0)
         pdf.set_font("helvetica", "B", 10)
-        
-        # Mieter-Liste formatieren für PDF
-        mieter_str_list = []
-        for m in giltige_mieter:
-            m_text = m["name"]
-            if m["email"]:
-                m_text += f" ({m['email']})"
-            mieter_str_list.append(m_text)
-        
-        pdf.cell(0, 6, ", ".join(mieter_str_list).encode("latin-1", "replace").decode("latin-1"), 0, 1)
+        pdf.cell(0, 6, mieter.encode("latin-1", "replace").decode("latin-1"), 0, 1)
 
         pdf.set_font("helvetica", size=10)
         pdf.cell(45, 6, "Vermieter:", 0, 0)
@@ -930,8 +886,10 @@ if st.button(
         )
         pdf.ln(45)
 
+        # Y-Position für die Unterschriftslinie festlegen
         line_y = pdf.get_y()
         
+        # Unterschriftslinien zeichnen
         pdf.line(15, line_y, 90, line_y)
         pdf.line(115, line_y, 190, line_y)
 
@@ -952,36 +910,35 @@ if st.button(
 
                 w_orig, h_orig = background.size
                 if w_orig > 0:
-                    sig_height = (width / w_orig) * h_orig
-                    pdf_obj.image(tmp_path, x=x_pos, y=y_pos - sig_height - 2, w=width)
+                    height = (width / w_orig) * h_orig
+                    pdf_obj.image(
+                        tmp_path, x=x_pos, y=y_pos - height - 2, w=width, h=height
+                    )
 
         process_signature_from_state("saved_vermieter_sig", pdf, 15, line_y, 75)
         process_signature_from_state("saved_mieter_sig", pdf, 115, line_y, 75)
 
+        pdf.set_xy(15, line_y + 2)
         pdf.set_font("helvetica", "B", 9)
-        pdf.set_text_color(30, 41, 59)
-        pdf.set_xy(15, line_y + 3)
-        pdf.cell(75, 5, vermieter.encode("latin-1", "replace").decode("latin-1"), 0, 0, "C")
-        
-        pdf.set_xy(115, line_y + 3)
-        pdf.cell(75, 5, mieter_str_list[0].encode("latin-1", "replace").decode("latin-1"), 0, 0, "C")
+        pdf.set_text_color(51, 65, 85)
+        pdf.cell(75, 5, "Vermieter (KARE-Immobilien)", 0, 0, "L")
+        pdf.set_xy(115, line_y + 2)
+        pdf.cell(75, 5, "Mieter", 0, 1, "L")
 
-        pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-        pdf.output(pdf_output_path)
-
-        with open(pdf_output_path, "rb") as f:
-            pdf_bytes = f.read()
-
+        # PDF im Speicher erzeugen und als Download anbieten
+        pdf_output = bytes(pdf.output())
         st.download_button(
-            label="📥 PDF-Protokoll herunterladen",
-            data=pdf_bytes,
-            file_name=f"Protokoll_{wohnung.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            label="📥 PDF-Protokoll jetzt herunterladen",
+            data=pdf_output,
+            file_name=f"Protokoll_{wohnung.replace(' ', '_')}.pdf",
             mime="application/pdf",
-            use_container_width=True,
+            type="primary",
+            use_container_width=True
         )
 
-        for t_file in temp_files:
+        # Temporäre Dateien aufräumen
+        for tf in temp_files:
             try:
-                os.unlink(t_file)
+                os.remove(tf)
             except Exception:
                 pass
